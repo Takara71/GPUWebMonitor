@@ -1,0 +1,31 @@
+{
+  "timeout_seconds": 2.5,
+  "retention_days": 30,
+  "history_days": 30,
+  "check_interval_seconds": 60,
+  "database_path": "/var/lib/lab-status/status.db",
+  "output_path": "/var/lib/lab-status/status.json",
+  "nodes": [
+    {
+      "id": "gpu-node-a",
+      "name": "GPU Node A",
+      "host": "127.0.0.1",
+      "port": 15101,
+      "detail_url": "/monitor/?node=gpu-node-a"
+    },
+    {
+      "id": "gpu-node-b",
+      "name": "GPU Node B",
+      "host": "127.0.0.1",
+      "port": 15102,
+      "detail_url": "/monitor/?node=gpu-node-b"
+    },
+    {
+      "id": "gpu-node-c",
+      "name": "GPU Node C",
+      "host": "127.0.0.1",
+      "port": 15103,
+      "detail_url": "/monitor/?node=gpu-node-c"
+    }
+  ]
+}

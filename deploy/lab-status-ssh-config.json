@@ -1,0 +1,7 @@
+{
+  "commands": {
+    "gpu-node-a": "ssh -p 50022 user-a@status.example.com",
+    "gpu-node-b": "ssh -p 50023 user-b@status.example.com",
+    "gpu-node-c": "ssh -p 50024 user-c@status.example.com"
+  }
+}

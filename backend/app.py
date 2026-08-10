@@ -7,6 +7,7 @@ import logging
 import gc
 import secrets
 from datetime import datetime, timedelta
+from typing import Any
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from deployment_mode import LAN_MODE, load_deployment_mode
@@ -17,7 +18,15 @@ try:
 except ImportError:
     # 模拟环境（仅供测试）
     class DummyMonitor:
-        def get_all_info(self):
+        def get_all_info(self) -> dict[str, Any]:
+            """返回测试环境使用的空监控数据。
+
+            Args:
+                无。
+
+            Returns:
+                包含空系统与 GPU 指标的字典。
+            """
             return {"system": {"cpu": {"percent": 0}, "memory": {"percent": 0}}, "gpu": {"gpus": [], "summary": {}}}
     gpu_monitor = DummyMonitor()
 
@@ -46,8 +55,15 @@ if DEPLOYMENT_MODE == LAN_MODE:
 
 
 @app.before_request
-def require_agent_token():
-    """Require a token in public mode and preserve the original LAN behavior."""
+def require_agent_token() -> Any:
+    """在公网模式校验 Bearer Token，局域网模式保持免认证。
+
+    Args:
+        无。
+
+    Returns:
+        校验通过时返回 ``None``；失败时返回 Flask JSON 错误响应。
+    """
     if not request.path.startswith('/api/') or DEPLOYMENT_MODE == LAN_MODE:
         return None
 
@@ -63,10 +79,16 @@ def require_agent_token():
 
 # --- 数据库核心逻辑 ---
 
-def get_db_connection():
-    """
-    创建一个统一配置的数据库连接。
-    使用 DELETE 模式确保不产生 .wal 和 .shm 文件。
+def get_db_connection() -> sqlite3.Connection | None:
+    """创建统一配置的 SQLite 数据库连接。
+
+    使用 DELETE 日志模式，避免产生长期存在的 WAL 与 SHM 文件。
+
+    Args:
+        无。
+
+    Returns:
+        配置完成的数据库连接；连接失败时返回 ``None``。
     """
     try:
         # 增加 timeout 到 30s，防止 DELETE 模式下的并发锁竞争
@@ -84,15 +106,29 @@ def get_db_connection():
         logger.error(f"无法连接数据库: {e}")
         return None
 
-def get_db():
-    """Flask 请求上下文内复用数据库连接"""
+def get_db() -> sqlite3.Connection | None:
+    """在当前 Flask 请求上下文内复用数据库连接。
+
+    Args:
+        无。
+
+    Returns:
+        当前请求的数据库连接；连接失败时返回 ``None``。
+    """
     if 'db' not in g:
         g.db = get_db_connection()
     return g.db
 
 @app.teardown_appcontext
-def close_connection(exception):
-    """确保 Flask 请求结束后彻底关闭连接，释放 FD"""
+def close_connection(exception: BaseException | None) -> None:
+    """在 Flask 请求结束后关闭数据库连接并释放文件描述符。
+
+    Args:
+        exception: Flask 请求结束时携带的异常；正常结束时为 ``None``。
+
+    Returns:
+        无返回值。
+    """
     db = g.pop('db', None)
     if db is not None:
         try:
@@ -100,8 +136,15 @@ def close_connection(exception):
         except Exception as e:
             logger.error(f"关闭数据库连接失败: {e}")
 
-def init_db():
-    """初始化数据库表结构"""
+def init_db() -> None:
+    """初始化历史监控数据库的表和索引。
+
+    Args:
+        无。
+
+    Returns:
+        无返回值。
+    """
     conn = get_db_connection()
     if conn:
         try:
@@ -127,14 +170,30 @@ def init_db():
             conn.close()
 
 # --- FD 监控辅助 ---
-def get_fd_count():
+def get_fd_count() -> int:
+    """读取当前进程已打开的文件描述符数量。
+
+    Args:
+        无。
+
+    Returns:
+        文件描述符数量；无法读取 ``/proc`` 时返回 ``-1``。
+    """
     try:
         return len(os.listdir('/proc/self/fd'))
     except:
         return -1
 
 # --- 后台记录任务 ---
-def background_recorder():
+def background_recorder() -> None:
+    """持续采集系统与 GPU 指标并写入历史数据库。
+
+    Args:
+        无。
+
+    Returns:
+        无返回值；函数会在后台线程中持续循环。
+    """
     logger.info(f"后台记录服务启动，保留天数：{KEEP_HISTORY_DAYS}")
 
     while True:
@@ -188,7 +247,15 @@ def background_recorder():
 # --- API 路由 ---
 
 @app.route('/')
-def health_check():
+def health_check() -> Any:
+    """返回 Agent 的健康状态、部署模式和当前时间。
+
+    Args:
+        无。
+
+    Returns:
+        Flask JSON 健康检查响应。
+    """
     return jsonify({
         "status": "ok",
         "deployment_mode": DEPLOYMENT_MODE,
@@ -197,7 +264,15 @@ def health_check():
     })
 
 @app.route('/api/status', methods=['GET'])
-def get_current_status():
+def get_current_status() -> Any:
+    """即时采集并返回当前节点的完整监控数据。
+
+    Args:
+        无。
+
+    Returns:
+        成功时返回监控数据 JSON；异常时返回 HTTP 500 错误响应。
+    """
     try:
         # 直接调用监控函数，不涉及 DB
         data = gpu_monitor.get_all_info()
@@ -206,7 +281,15 @@ def get_current_status():
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 @app.route('/api/history', methods=['GET'])
-def get_history():
+def get_history() -> Any:
+    """按时间顺序返回限定数量的历史监控样本。
+
+    Args:
+        无。样本上限通过请求查询参数 ``limit`` 读取。
+
+    Returns:
+        Flask JSON 历史数据响应。
+    """
     limit = min(request.args.get('limit', 100, type=int), 1000)
     
     try:

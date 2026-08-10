@@ -46,7 +46,14 @@ _NVML_INITIALIZED = False
 
 
 def _load_memory_snapshot() -> Dict[str, Dict[str, Any]]:
-    """Load a fresh privileged PSS snapshot, or return an empty mapping."""
+    """读取仍在有效期内的特权 PSS 内存快照。
+
+    Args:
+        无。
+
+    Returns:
+        按 PID 字符串索引的进程内存快照；不可用时返回空字典。
+    """
     try:
         with open(MEMORY_SNAPSHOT_PATH, 'r', encoding='utf-8') as handle:
             snapshot = json.load(handle)
@@ -59,12 +66,22 @@ def _load_memory_snapshot() -> Dict[str, Dict[str, Any]]:
         return {}
 
 
-def _get_process_memory(process, info, memory_snapshot):
-    """Return ``(accounted_bytes, rss_bytes, metric)`` for a process.
+def _get_process_memory(
+    process: psutil.Process,
+    info: Dict[str, Any],
+    memory_snapshot: Dict[str, Dict[str, Any]],
+) -> tuple[int, int, str]:
+    """计算单个进程可以安全汇总的内存占用。
 
-    PSS is preferred because it proportionally distributes shared pages and
-    can therefore be summed across processes. RSS is retained only as a clearly
-    identified fallback when no fresh privileged snapshot is available.
+    优先使用按比例分摊共享页的 PSS；无法获取 PSS 时明确回退到 RSS。
+
+    Args:
+        process: psutil 进程对象。
+        info: 预读取的进程基础信息字典。
+        memory_snapshot: 按 PID 索引的特权 PSS 快照。
+
+    Returns:
+        ``(计入汇总的字节数, RSS 字节数, 指标名称)`` 元组。
     """
     memory_info = info.get('memory_info')
     rss = max(int(memory_info.rss or 0), 0)
@@ -90,17 +107,17 @@ def get_system_process_usage(
     limit: int = SYSTEM_PROCESS_LIMIT,
     total_memory: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Return process groups plus complete per-user CPU/PSS totals.
+    """汇总高占用进程组以及所有用户的 CPU/PSS 使用量。
 
-    CPU usage is normalized against the capacity of the whole machine, so one
-    fully occupied logical CPU contributes ``100 / logical_cpu_count`` percent.
-    Processes with the same user, executable name, and command line are grouped
-    into one row. Memory uses PSS whenever available so shared pages are
-    proportionally distributed instead of being counted once per forked worker.
+    CPU 按整机逻辑核心总容量归一化；相同用户、进程名和完整命令的实例会
+    合并。内存优先使用可以安全相加的 PSS，并同时保留 RSS 作为回退信息。
 
-    The result is the union of the top ``limit`` groups by CPU usage and by
-    resident memory. This keeps the payload bounded while ensuring that either
-    dashboard sort still includes the busiest groups for that resource.
+    Args:
+        limit: CPU 与内存两个排名各自保留的最大进程组数量。
+        total_memory: 节点总内存字节数；为空时由 psutil 即时读取。
+
+    Returns:
+        包含进程组、用户汇总和内存统计口径的字典。
     """
     global _process_cpu_samples
 
@@ -237,11 +254,26 @@ def get_system_processes(
     limit: int = SYSTEM_PROCESS_LIMIT,
     total_memory: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
-    """Compatibility wrapper returning only the bounded process-group list."""
+    """兼容旧调用方式，只返回有数量上限的进程组列表。
+
+    Args:
+        limit: CPU 与内存排名各自保留的最大进程组数量。
+        total_memory: 节点总内存字节数；为空时由 psutil 读取。
+
+    Returns:
+        合并、去重并按 CPU 排序的进程组列表。
+    """
     return get_system_process_usage(limit=limit, total_memory=total_memory)['processes']
 
-def init_nvml():
-    """初始化 NVML (线程安全)"""
+def init_nvml() -> None:
+    """在线程锁保护下初始化 NVML。
+
+    Args:
+        无。
+
+    Returns:
+        无返回值。
+    """
     global _NVML_INITIALIZED
     if NVITOP_AVAILABLE and not _NVML_INITIALIZED:
         with _nvml_lock:
@@ -253,8 +285,15 @@ def init_nvml():
                 logger.error(f"NVML 初始化失败: {e}")
                 _NVML_INITIALIZED = False
 
-def _shutdown_nvml():
-    """退出时释放资源"""
+def _shutdown_nvml() -> None:
+    """在进程退出前安全关闭 NVML 并释放资源。
+
+    Args:
+        无。
+
+    Returns:
+        无返回值。
+    """
     global _NVML_INITIALIZED
     if _NVML_INITIALIZED:
         with _nvml_lock:
@@ -272,7 +311,14 @@ atexit.register(_shutdown_nvml)
 init_nvml()
 
 def get_system_info() -> Dict[str, Any]:
-    """获取系统基础信息，优化了句柄使用"""
+    """采集整机 CPU、内存、网络和系统进程信息。
+
+    Args:
+        无。
+
+    Returns:
+        系统资源指标字典；采集失败时返回空字典。
+    """
     try:
         # psutil.cpu_percent 在 interval=None 时是非阻塞的
         cpu_percent = min(max(float(psutil.cpu_percent(interval=None)), 0.0), 100.0)
@@ -311,8 +357,15 @@ def get_system_info() -> Dict[str, Any]:
         logger.error(f"获取系统信息失败: {e}")
         return {}
 
-def try_get_processes_fallback(device_index: int) -> List[Dict]:
-    """底层 NVML 回退机制，增加了 oneshot() 优化以减少 FD 占用"""
+def try_get_processes_fallback(device_index: int) -> List[Dict[str, Any]]:
+    """通过底层 NVML 回退接口读取指定 GPU 的计算进程。
+
+    Args:
+        device_index: NVML 设备索引。
+
+    Returns:
+        GPU 进程信息列表；NVML 不可用或读取失败时返回空列表。
+    """
     fallback_processes = []
     if not _NVML_INITIALIZED:
         return fallback_processes
@@ -321,7 +374,16 @@ def try_get_processes_fallback(device_index: int) -> List[Dict]:
         try:
             handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
             
-            def extract_procs(nvml_procs, proc_type):
+            def extract_procs(nvml_procs: Any, proc_type: str) -> None:
+                """把一类 NVML 进程补充为前端需要的进程字典。
+
+                Args:
+                    nvml_procs: NVML 返回的计算或图形进程序列。
+                    proc_type: 用于区分计算与图形进程的类型标识。
+
+                Returns:
+                    无返回值；结果追加到外层 ``fallback_processes``。
+                """
                 for p in nvml_procs:
                     proc_info = {
                         'pid': p.pid,
@@ -363,7 +425,14 @@ def try_get_processes_fallback(device_index: int) -> List[Dict]:
     return fallback_processes
 
 def get_gpu_info() -> Dict[str, Any]:
-    """获取 GPU 详情，增加了对 nvitop 的异常处理和资源保护"""
+    """采集全部 GPU 的负载、显存、温度、功耗和进程信息。
+
+    Args:
+        无。
+
+    Returns:
+        GPU 设备列表与集群摘要；采集失败时包含错误说明。
+    """
     if not NVITOP_AVAILABLE:
         return {'error': 'nvitop not available', 'gpus': []}
 
@@ -460,7 +529,14 @@ def get_gpu_info() -> Dict[str, Any]:
         return {'error': str(e), 'gpus': []}
 
 def get_all_info() -> Dict[str, Any]:
-    """主调用接口"""
+    """组合系统指标与 GPU 指标，形成 Agent 完整状态。
+
+    Args:
+        无。
+
+    Returns:
+        包含系统、GPU 与采集时间的完整监控字典。
+    """
     # 在每次大循环调用前确保 NVML 状态
     if not _NVML_INITIALIZED:
         init_nvml()

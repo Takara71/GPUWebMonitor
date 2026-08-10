@@ -23,8 +23,8 @@
 - **系统资源**：CPU 使用率与频率、内存使用量、网络累计收发与实时速率
 - **利用率趋势图**：CPU / 内存 / GPU 平均利用率的 SVG 折线图，支持实时模式和历史模式（10 分钟、30 分钟、1 小时、6 小时、12 小时）
 - **历史数据记录**：Agent 每 30 秒写入 SQLite，默认保留 30 天
-- **三语支持**：中文、English、日本語，自动检测浏览器语言
-- **主题切换**：自动 / 浅色 / 深色三种模式，跟随系统偏好
+- **三语支持**：中文、English、日本語，公开状态页与详细监控共享语言偏好
+- **主题切换**：太阳 / 月亮图标切换浅色与深色，首次访问跟随系统偏好，两级页面共享主题
 - **响应式设计**：适配桌面、平板和手机，移动端自动切换布局
 - **本地化部署**：前端资源全部本地加载，无外部 CDN 依赖
 
@@ -45,6 +45,57 @@ Agent 服务 backend/app.py
   v
 GPU 与系统状态
 ```
+
+### 轻量级公网状态页
+
+仓库同时提供一个可选的公网状态入口。它把“服务是否在线”和“详细资源占用”拆成两层，适合让低配置 VPS 只承担静态页面、TCP 探测和反向代理：
+
+```text
+访客
+  |
+  |-- / ------------------------> 静态状态页（无需登录）
+  |                                读取每分钟生成的 status.json
+  |
+  `-- /monitor/ -----------------> 详细 GPU 监控（签名会话登录）
+                                   |
+Nginx -- auth_request ------------+-- FRP 内部端口 --> 各节点 Agent
+  |                                |
+  `-- session_auth.py ------------+-- 校验 HttpOnly 签名 Cookie
+  |
+systemd timer --> status_probe.py --> SQLite 可用率与故障历史
+```
+
+这个入口不在 VPS 上持续运行 Flask 或 Node.js。`backend/status_probe.py` 每分钟执行一次后立即退出，状态页只加载原生 HTML、CSS、JavaScript；唯一新增的常驻进程是基于 Python 标准库的轻量会话校验服务。GPU 节点断线时，首页及既有历史仍可访问，对应卡片会显示离线；只有该节点的实时详细数据不可用。
+
+登录只在公开状态页的同源弹窗中完成，详细监控不再触发浏览器 HTTP Basic 弹窗。服务端校验现有 `htpasswd` SHA-512 密码散列，成功后签发 HMAC-SHA256 Cookie；Cookie 使用 `HttpOnly`、`SameSite=Strict`，HTTPS 下使用 `__Host-` 前缀和 `Secure`。密码不会写入浏览器存储。登录接口同时启用来源校验、4 KiB 请求上限、Nginx 限速和进程内失败锁定；修改 `htpasswd` 后，既有会话会自动失效。
+
+相关模板：
+
+| 文件 | 作用 |
+| --- | --- |
+| `status/` | 无框架、无外部 CDN 的公开状态页 |
+| `backend/session_auth.py` | 登录、签名会话、来源检查和失败锁定服务 |
+| `backend/status_probe.py` | 并发 TCP 探测、SQLite 历史和静态 JSON 生成器 |
+| `deploy/lab-session-auth.service` | 会话校验 systemd 服务 |
+| `deploy/lab-status-nodes.json` | 探测节点与历史数据路径示例 |
+| `deploy/lab-status-probe.service` | 单次探测 systemd 服务 |
+| `deploy/lab-status-probe.timer` | 每分钟触发探测的定时器 |
+| `deploy/nginx-lab-auth-limit.conf` | 登录接口 Nginx 限速区 |
+| `deploy/nginx-lab-status.conf` | 状态页、登录保护和三节点 Agent 反向代理示例 |
+
+生产部署时只对外开放 HTTP/HTTPS；Agent 的 FRP 远程端口应由系统防火墙限制为仅本机可访问，或不要在云厂商安全组开放。部署完成后可用以下方式检查访问边界：
+
+```bash
+curl -I http://127.0.0.1/
+curl -I http://127.0.0.1/api/status.json
+curl -I http://127.0.0.1/monitor/          # 未登录应返回 303 到 /?login=1
+curl -I http://127.0.0.1/monitor/api/config # 未登录应返回 401
+curl http://127.0.0.1/auth/session          # 应返回 authenticated=false
+```
+
+临时 HTTP 地址只用于部署预览，因为 HTTP 无法保护登录口令的传输；正式对外提供登录前必须启用 HTTPS。配置在 HTTPS 下会自动签发 `__Host-lab_session; Secure` Cookie。
+
+`status/index.html` 和详细监控页底部都预留了 ICP 备案区域。备案通过后，将“ICP备案信息预留（审核中）”替换为备案号，并链接到 `https://beian.miit.gov.cn/`；如当地要求公安备案，可在同一区域追加公安备案号。
 
 默认端口：
 
@@ -298,7 +349,7 @@ export GPU_MONITOR_DASHBOARD_PORT=28456
 
 ### Dashboard 配置
 
-Dashboard 根据部署模式读取 `front/config.public.json` 或 `front/config.lan.json`，并通过 `/api/proxy?id=<server_id>` 将请求转发到目标 Agent。未设置模式时继续读取原有的 `front/config.json`。
+Dashboard 根据部署模式读取 `front/config.public.json` 或 `front/config.lan.json`，并通过 `/api/nodes/<server_id>/status` 或 `/api/nodes/<server_id>/history` 将请求转发到目标 Agent。旧的 `/api/proxy?id=<server_id>` 路径继续保留以兼容已有部署。未设置模式时继续读取原有的 `front/config.json`。
 
 | 环境变量 | 作用 |
 | --- | --- |
@@ -329,6 +380,8 @@ Dashboard 根据部署模式读取 `front/config.public.json` 或 `front/config.
 | --- | --- | --- |
 | `GET` | `/` | 前端页面 |
 | `GET` | `/api/config` | 获取服务器配置 |
+| `GET` | `/api/nodes/<server_id>/status` | 获取指定 Agent 的实时状态 |
+| `GET` | `/api/nodes/<server_id>/history?limit=N` | 获取指定 Agent 的历史数据 |
 | `GET` | `/api/proxy?id=<server_id>` | 代理请求到目标 Agent，支持 `history=1&limit=N` 查询历史数据 |
 
 ## 项目结构
@@ -339,6 +392,8 @@ GPUWebMonitor/
 │   ├── app.py             # Agent 服务，运行在被监控服务器上
 │   ├── dashboard.py       # Dashboard 服务，前端代理和请求转发
 │   ├── gpu_monitor.py     # GPU 和系统指标采集逻辑
+│   ├── session_auth.py    # 公网入口登录与签名会话服务
+│   ├── status_probe.py    # 轻量级公网状态探测与静态 JSON 生成器
 │   ├── stress.py          # 压力测试脚本
 │   └── requirements.txt   # Python 依赖
 ├── front/
@@ -355,6 +410,8 @@ GPUWebMonitor/
 │   │   ├── element-plus.css
 │   │   └── element-plus-icons.js
 │   └── favicon / icon     # 浏览器图标资源
+├── status/                # 轻量级公网状态页（原生 HTML/CSS/JS）
+├── deploy/                # Nginx、systemd 和节点配置模板
 ├── pictures/
 │   └── readme1.png        # README 预览截图
 ├── scripts/

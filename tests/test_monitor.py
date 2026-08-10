@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 from collections import namedtuple
+from typing import Any
 from unittest import mock
 
 
@@ -24,7 +25,28 @@ CpuFreq = namedtuple("CpuFreq", "current")
 
 
 class FakeProcess:
-    def __init__(self, pid, name, cpu_time, rss, username="user", cmdline=None):
+    def __init__(
+        self,
+        pid: int,
+        name: str,
+        cpu_time: float,
+        rss: int,
+        username: str = "user",
+        cmdline: list[str] | None = None,
+    ) -> None:
+        """创建具有固定 psutil 信息的测试进程。
+
+        Args:
+            pid: 模拟进程 ID。
+            name: 模拟进程名称。
+            cpu_time: 模拟累计 CPU 时间。
+            rss: 模拟 RSS 内存字节数。
+            username: 模拟进程所属用户。
+            cmdline: 模拟完整命令行。
+
+        Returns:
+            无返回值。
+        """
         self.info = {
             "pid": pid,
             "name": name,
@@ -37,21 +59,61 @@ class FakeProcess:
         self._username = username
         self._cmdline = self.info["cmdline"]
 
-    def oneshot(self):
+    def oneshot(self) -> Any:
+        """返回与 psutil oneshot 兼容的上下文管理器。
+
+        Args:
+            无。
+
+        Returns:
+            可用于 ``with`` 语句的模拟上下文管理器。
+        """
         return mock.MagicMock(__enter__=lambda value: value, __exit__=lambda *args: None)
 
-    def username(self):
+    def username(self) -> str:
+        """返回模拟进程用户名。
+
+        Args:
+            无。
+
+        Returns:
+            初始化时设置的用户名。
+        """
         return self._username
 
-    def cmdline(self):
+    def cmdline(self) -> list[str]:
+        """返回模拟进程命令行。
+
+        Args:
+            无。
+
+        Returns:
+            初始化时设置的命令行参数列表。
+        """
         return self._cmdline
 
 
 class ProcessCollectionTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
+        """在每个测试前清空进程 CPU 采样缓存。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         gpu_monitor._process_cpu_samples = {}
 
-    def test_process_union_supports_cpu_and_memory_sorting(self):
+    def test_process_union_supports_cpu_and_memory_sorting(self) -> None:
+        """验证结果同时保留 CPU 和内存排名靠前的进程。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         cpu_heavy = FakeProcess(101, "cpu-heavy", 1, 100)
         memory_heavy = FakeProcess(202, "memory-heavy", 1, 10_000)
 
@@ -69,7 +131,15 @@ class ProcessCollectionTests(unittest.TestCase):
         self.assertEqual(next(process for process in processes if process["pid"] == 202)["memory_rss"], 10_000)
         self.assertEqual(next(process for process in processes if process["pid"] == 202)["memory_percent"], 25.0)
 
-    def test_identical_commands_are_grouped_and_totals_match(self):
+    def test_identical_commands_are_grouped_and_totals_match(self) -> None:
+        """验证相同命令实例会合并且资源总量保持一致。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         first = FakeProcess(301, "python", 1, 1_000, cmdline=["python", "train.py"])
         second = FakeProcess(302, "python", 2, 3_000, cmdline=["python", "train.py"])
 
@@ -89,7 +159,15 @@ class ProcessCollectionTests(unittest.TestCase):
         self.assertEqual(processes[0]["memory_rss"], 4_000)
         self.assertEqual(processes[0]["memory_percent"], 4.0)
 
-    def test_pss_prevents_shared_memory_double_counting_and_builds_user_totals(self):
+    def test_pss_prevents_shared_memory_double_counting_and_builds_user_totals(self) -> None:
+        """验证 PSS 不重复计算共享内存并正确生成用户汇总。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         first = FakeProcess(401, "worker", 1, 2_000, username="alice", cmdline=["python", "train.py"])
         second = FakeProcess(402, "worker", 1, 2_000, username="alice", cmdline=["python", "train.py"])
         other = FakeProcess(403, "server", 1, 1_000, username="bob", cmdline=["server"])
@@ -125,7 +203,15 @@ class ProcessCollectionTests(unittest.TestCase):
         self.assertEqual(alice["process_group_count"], 1)
         self.assertEqual(alice["instance_count"], 2)
 
-    def test_system_totals_use_consistent_cpu_and_memory_percentages(self):
+    def test_system_totals_use_consistent_cpu_and_memory_percentages(self) -> None:
+        """验证系统总量与进程 CPU、内存百分比使用一致口径。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         memory = VirtualMemory(total=1_000, available=350, used=500, percent=50)
         with mock.patch.object(gpu_monitor.psutil, "cpu_percent", return_value=125), \
                 mock.patch.object(gpu_monitor.psutil, "virtual_memory", return_value=memory), \
@@ -144,7 +230,15 @@ class ProcessCollectionTests(unittest.TestCase):
 
 
 class AuthenticationTests(unittest.TestCase):
-    def test_agent_api_requires_bearer_token(self):
+    def test_agent_api_requires_bearer_token(self) -> None:
+        """验证公网 Agent API 必须提供正确 Bearer Token。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         original_token = agent_app.AGENT_TOKEN
         original_mode = agent_app.DEPLOYMENT_MODE
         agent_app.AGENT_TOKEN = "agent-secret"
@@ -161,13 +255,29 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["data"], payload)
 
-    def test_public_agent_fails_closed_without_token(self):
+    def test_public_agent_fails_closed_without_token(self) -> None:
+        """验证公网 Agent 缺少服务端 Token 时拒绝开放 API。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         with mock.patch.object(agent_app, "DEPLOYMENT_MODE", deployment_mode.PUBLIC_MODE), \
                 mock.patch.object(agent_app, "AGENT_TOKEN", ""):
             response = agent_app.app.test_client().get("/api/status")
         self.assertEqual(response.status_code, 503)
 
-    def test_lan_agent_does_not_require_token(self):
+    def test_lan_agent_does_not_require_token(self) -> None:
+        """验证局域网 Agent 保持原项目的免 Token 行为。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         payload = {"system": {}, "gpu": {"gpus": [], "summary": {}}}
         with mock.patch.object(agent_app, "DEPLOYMENT_MODE", deployment_mode.LAN_MODE), \
                 mock.patch.object(agent_app, "AGENT_TOKEN", "agent-secret"), \
@@ -176,7 +286,15 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["data"], payload)
 
-    def test_dashboard_auth_and_public_config_redaction(self):
+    def test_dashboard_auth_and_public_config_redaction(self) -> None:
+        """验证公网 Dashboard 登录和 Agent 地址隐藏逻辑。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         original_username = dashboard.DASHBOARD_USERNAME
         original_password = dashboard.DASHBOARD_PASSWORD
         original_token = dashboard.AGENT_TOKEN
@@ -214,14 +332,30 @@ class AuthenticationTests(unittest.TestCase):
         )
         self.assertEqual(blocked_named_config.status_code, 403)
 
-    def test_public_dashboard_fails_closed_without_credentials(self):
+    def test_public_dashboard_fails_closed_without_credentials(self) -> None:
+        """验证公网 Dashboard 缺少凭据时返回安全错误。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         with mock.patch.object(dashboard, "DEPLOYMENT_MODE", deployment_mode.PUBLIC_MODE), \
                 mock.patch.object(dashboard, "DASHBOARD_USERNAME", ""), \
                 mock.patch.object(dashboard, "DASHBOARD_PASSWORD", ""):
             response = dashboard.app.test_client().get("/api/config")
         self.assertEqual(response.status_code, 503)
 
-    def test_lan_dashboard_is_login_free_and_returns_full_config(self):
+    def test_lan_dashboard_is_login_free_and_returns_full_config(self) -> None:
+        """验证局域网 Dashboard 免登录并返回完整节点配置。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         config = {
             "servers": [
                 {"id": "lan-node", "name": "LAN node", "url": "http://192.168.1.10:15896"}
@@ -240,28 +374,57 @@ class AuthenticationTests(unittest.TestCase):
             response = client.get("/api/config")
             legacy_config = client.get("/config.json")
             proxied = client.get("/api/proxy?id=lan-node")
+            proxied_node = client.get("/api/nodes/lan-node/status")
+            proxied_history = client.get("/api/nodes/lan-node/history?limit=25")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["deployment_mode"], deployment_mode.LAN_MODE)
         self.assertEqual(response.get_json()["servers"][0]["url"], "http://192.168.1.10:15896")
         self.assertEqual(legacy_config.status_code, 200)
         self.assertEqual(proxied.status_code, 200)
+        self.assertEqual(proxied_node.status_code, 200)
+        self.assertEqual(proxied_history.status_code, 200)
+        self.assertIn("/api/history?limit=25", request_agent.call_args.args[0])
         self.assertEqual(request_agent.call_args.kwargs["headers"], {})
         self.assertFalse(request_agent.call_args.kwargs["verify"])
 
 
 class DeploymentModeTests(unittest.TestCase):
-    def test_modes_are_normalized_and_invalid_values_fail(self):
+    def test_modes_are_normalized_and_invalid_values_fail(self) -> None:
+        """验证部署模式会规范化且非法值会被拒绝。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         self.assertEqual(deployment_mode.load_deployment_mode(" LAN "), deployment_mode.LAN_MODE)
         self.assertEqual(deployment_mode.load_deployment_mode("PUBLIC"), deployment_mode.PUBLIC_MODE)
         with self.assertRaises(RuntimeError):
             deployment_mode.load_deployment_mode("internet")
 
-    def test_unset_mode_preserves_original_lan_behavior(self):
+    def test_unset_mode_preserves_original_lan_behavior(self) -> None:
+        """验证未设置部署模式时保持原版局域网行为。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertEqual(deployment_mode.load_deployment_mode(), deployment_mode.LAN_MODE)
 
-    def test_boolean_settings_are_validated(self):
+    def test_boolean_settings_are_validated(self) -> None:
+        """验证布尔环境变量支持合法写法并拒绝非法值。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
         with mock.patch.dict(os.environ, {"SETTING": "yes"}):
             self.assertTrue(deployment_mode.load_boolean_setting("SETTING", False))
         with mock.patch.dict(os.environ, {"SETTING": "off"}):

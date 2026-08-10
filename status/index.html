@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f7fb" />
+  <title>实验室服务状态</title>
+  <link rel="stylesheet" href="/status-assets/status.css?v=18" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="返回实验室服务状态首页" data-i18n-aria="homeAria">
+        <span class="brand-mark" aria-hidden="true">◎</span>
+        <span><strong data-i18n="title">实验室服务状态</strong><small data-i18n="subtitle">GPU 计算节点与服务可用性</small></span>
+      </a>
+      <div class="toolbar">
+        <button class="refresh-button" id="refresh-button" type="button" aria-label="立即刷新状态并重置倒计时" data-i18n-aria="refresh.manualAria">
+          <svg class="refresh-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 8.5A9 9 0 1 0 21 12"></path><path d="M21 3v6h-6"></path></svg>
+          <span id="refresh-label">正在获取状态</span>
+        </button>
+        <div class="language-switch" role="group" aria-label="语言" data-i18n-aria="language">
+          <button type="button" data-locale="zh" aria-label="中文">中</button>
+          <button type="button" data-locale="en" aria-label="English">EN</button>
+          <button type="button" data-locale="ja" aria-label="日本語">日</button>
+        </div>
+        <details class="color-theme-picker" id="color-theme-picker">
+          <summary class="icon-button color-theme-button" aria-label="切换配色主题" data-i18n-aria="colorTheme">
+            <svg class="palette-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.3a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h4.2A4.8 4.8 0 0 0 21 8.2 9 9 0 0 0 12 3Z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7.5" r="1"></circle><circle cx="14.5" cy="7.2" r="1"></circle></svg>
+          </summary>
+          <div class="color-theme-menu" role="radiogroup" aria-label="配色主题" data-i18n-aria="colorTheme">
+            <button type="button" role="radio" data-color-theme="green"><i class="theme-swatch theme-swatch-green"></i><span data-i18n="themes.green">翠绿</span></button>
+            <button type="button" role="radio" data-color-theme="ocean"><i class="theme-swatch theme-swatch-ocean"></i><span data-i18n="themes.ocean">海蓝</span></button>
+            <button type="button" role="radio" data-color-theme="violet"><i class="theme-swatch theme-swatch-violet"></i><span data-i18n="themes.violet">紫罗兰</span></button>
+            <button type="button" role="radio" data-color-theme="amber"><i class="theme-swatch theme-swatch-amber"></i><span data-i18n="themes.amber">暖橙</span></button>
+            <button type="button" role="radio" data-color-theme="anime"><i class="theme-swatch theme-swatch-anime"></i><span data-i18n="themes.anime">星樱</span></button>
+            <button type="button" role="radio" data-color-theme="fighter"><i class="theme-swatch theme-swatch-fighter"></i><span data-i18n="themes.fighter">斗魂</span></button>
+          </div>
+        </details>
+        <button class="icon-button theme-button" id="theme-button" type="button" aria-label="切换颜色主题" data-i18n-aria="themeToggle">
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg>
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.6 8.6 0 1 0 20.5 14.2Z"></path></svg>
+        </button>
+        <button class="logout-button" id="logout-button" type="button" hidden data-i18n="logout">退出</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hoshizakura-hero" aria-label="星樱主题主视觉" data-i18n-aria="hero.aria">
+        <div class="hoshizakura-veil" aria-hidden="true"></div>
+        <div class="hoshizakura-petals" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="hoshizakura-copy">
+          <span class="hoshizakura-kicker">HOSHIZAKURA / GPU LAB</span>
+          <h1 data-i18n="hero.title">星樱计算观测室</h1>
+          <p data-i18n="hero.subtitle">在樱色晨光中，守望每一次计算。</p>
+          <span class="hoshizakura-status"><i aria-hidden="true"></i><span data-i18n="hero.badge">原创主题 · 实时状态</span></span>
+        </div>
+      </section>
+      <section class="toushin-hero" aria-label="斗魂主题主视觉" data-i18n-aria="fightHero.aria">
+        <div class="toushin-ink" aria-hidden="true"></div>
+        <div class="toushin-slashes" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="toushin-copy">
+          <span class="toushin-kicker">FIGHT LAB // SYSTEM STATUS</span>
+          <h1 data-i18n="fightHero.title">街头斗魂观测站</h1>
+          <p data-i18n="fightHero.subtitle">以拳为信号，让每一次计算正面交锋。</p>
+          <span class="toushin-status"><b>ROUND 01</b><span data-i18n="fightHero.badge">原创格斗主题 · 实时状态</span></span>
+        </div>
+      </section>
+      <section class="summary-grid" aria-label="状态摘要" data-i18n-aria="summaryAria">
+        <article class="summary-card"><span data-i18n="summary.total">监控节点</span><strong id="total-count">—</strong><small data-i18n="summary.totalHint">全部计算服务器</small></article>
+        <article class="summary-card is-online"><span data-i18n="summary.online">正常节点</span><strong id="online-count">—</strong><small data-i18n="summary.onlineHint">FRP 与 Agent 可连接</small></article>
+        <article class="summary-card is-offline"><span data-i18n="summary.offline">异常节点</span><strong id="offline-count">—</strong><small data-i18n="summary.offlineHint">连接超时或中断</small></article>
+        <article class="summary-card"><span data-i18n="summary.availability">平均可用率</span><strong id="availability-value">—</strong><small data-i18n="summary.availabilityHint">最近 30 天</small></article>
+      </section>
+
+      <section class="notice" id="global-notice" hidden></section>
+      <section class="node-grid" id="node-grid" aria-live="polite"></section>
+    </main>
+
+    <footer>
+      <div><span data-i18n="footer.description">实验室基础设施状态 · 详细资源信息需要登录</span><span class="icp-placeholder" data-i18n="footer.icp">ICP备案信息预留（审核中）</span></div>
+      <span id="footer-time" data-i18n="footer.waiting">等待首次检测</span>
+    </footer>
+  </div>
+
+  <template id="node-card-template">
+    <article class="node-card">
+      <div class="node-heading">
+        <div>
+          <div class="node-title-row">
+            <h2 class="node-name"></h2>
+            <span class="copy-control">
+              <button class="copy-ssh-button" type="button" hidden aria-label="复制 SSH 连接指令" data-i18n-aria="ssh.copyAria" title="复制 SSH 连接指令">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 13.4a4 4 0 0 0 5.7 0l2.1-2.1a4 4 0 1 0-5.7-5.7l-1.2 1.2"></path><path d="M13.4 10.6a4 4 0 0 0-5.7 0l-2.1 2.1a4 4 0 1 0 5.7 5.7l1.2-1.2"></path></svg>
+              </button>
+              <span class="copy-feedback" hidden data-i18n="ssh.copied">已复制</span>
+            </span>
+          </div>
+        </div>
+        <span class="status-badge"><i></i><span class="status-text"></span></span>
+      </div>
+      <div class="metric-grid">
+        <button class="metric-card latency-metric" type="button" aria-label="查看响应时间趋势" data-i18n-aria="latency.openAria">
+          <span class="metric-label-row"><span data-i18n="node.averageLatency">平均响应时间</span><svg class="trend-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="m7 15 4-5 3 3 5-6"></path></svg></span>
+          <strong class="latency-value">—</strong>
+          <small data-i18n="node.last24h">最近 24 小时</small>
+        </button>
+        <div class="metric-card"><span data-i18n="node.availability">平均运行时间</span><strong class="uptime-value">—</strong><small data-i18n="node.cloudHistory">最近30天</small></div>
+      </div>
+      <div class="history-panel">
+        <div class="history-heading"><span class="ping-summary"><i></i><span class="ping-interval">PING / 1m</span><b class="ping-state"></b></span></div>
+        <div class="history-bars" role="img" aria-label="最近三十天服务状态" data-i18n-aria="node.historyAria"></div>
+        <div class="history-scale"><span data-i18n="node.daysAgo">30 天前</span><span class="history-caption"></span><span data-i18n="node.today">今天</span></div>
+      </div>
+      <details class="incident-panel">
+        <summary><span data-i18n="incident.title">故障记录</span><span class="incident-summary-tail"><span class="incident-count"></span><svg class="incident-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 12 5-5 5 5"></path></svg></span></summary>
+        <div class="incident-list"></div>
+      </details>
+      <a class="detail-link" href="/monitor/"><span class="detail-link-label" data-i18n="auth.loginResource">登录查看资源占用</span><span aria-hidden="true">→</span></a>
+      <a class="resource-preview" href="/monitor/" hidden aria-label="打开详细资源监控" data-i18n-aria="resource.openAria">
+        <span class="resource-stat">
+          <small data-i18n="resource.cpu">CPU</small>
+          <strong class="resource-cpu">—</strong>
+          <i class="resource-meter" aria-hidden="true"><span class="resource-cpu-meter"></span></i>
+        </span>
+        <span class="resource-stat">
+          <small data-i18n="resource.memory">内存</small>
+          <strong class="resource-memory">—</strong>
+          <i class="resource-meter" aria-hidden="true"><span class="resource-memory-meter"></span></i>
+        </span>
+        <span class="resource-stat">
+          <small data-i18n="resource.gpu">GPU</small>
+          <strong class="resource-gpu">—</strong>
+          <i class="resource-meter" aria-hidden="true"><span class="resource-gpu-meter"></span></i>
+        </span>
+        <span class="resource-preview-arrow" aria-hidden="true">→</span>
+      </a>
+    </article>
+  </template>
+
+  <dialog class="latency-dialog" id="latency-dialog" aria-labelledby="latency-dialog-title">
+    <section class="latency-dialog-panel">
+      <div class="latency-dialog-heading">
+        <div><h2 id="latency-dialog-title" data-i18n="latency.title">响应时间趋势</h2><p id="latency-dialog-node"></p></div>
+        <button class="dialog-close" id="latency-dialog-close" type="button" aria-label="关闭响应时间趋势" data-i18n-aria="latency.closeAria">×</button>
+      </div>
+      <div class="latency-chart-summary"><span data-i18n="latency.average">24 小时平均</span><strong id="latency-dialog-average">—</strong></div>
+      <div class="latency-chart-wrap">
+        <svg id="latency-chart" viewBox="0 0 820 340" role="img" aria-label="最近二十四小时响应时间折线图" data-i18n-aria="latency.chartAria"></svg>
+        <p class="latency-chart-empty" id="latency-chart-empty" hidden data-i18n="latency.empty">最近 24 小时暂无响应时间样本</p>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog class="login-dialog" id="login-dialog" aria-labelledby="login-title">
+    <form class="login-form" id="login-form">
+      <div class="login-heading">
+        <div><span class="login-kicker" data-i18n="auth.secureAccess">SECURE ACCESS</span><h2 id="login-title" data-i18n="auth.title">登录查看资源占用</h2></div>
+        <button class="dialog-close" id="login-close" type="button" aria-label="关闭登录框" data-i18n-aria="auth.close">×</button>
+      </div>
+      <p class="login-description" data-i18n="auth.description">验证通过后可查看已配置计算服务器的详细资源和进程信息。</p>
+      <label><span data-i18n="auth.username">用户名</span><input id="login-username" name="username" type="text" autocomplete="username" maxlength="128" required /></label>
+      <label><span data-i18n="auth.password">密码</span><input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="512" required /></label>
+      <label class="remember-row"><input id="login-remember" name="remember" type="checkbox" /><span data-i18n="auth.remember">保持登录 30 天</span></label>
+      <p class="login-message" id="login-message" role="alert" hidden></p>
+      <button class="login-submit" id="login-submit" type="submit" data-i18n="auth.submit">安全登录</button>
+      <small class="login-security" data-i18n="auth.security">会话保存在 HttpOnly Cookie 中，网页脚本无法读取密码或登录令牌。</small>
+    </form>
+  </dialog>
+
+  <script src="/status-assets/status.js?v=14" defer></script>
+</body>
+</html>

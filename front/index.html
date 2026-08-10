@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#f4f7fb" />
+  <meta name="gpu-monitor-api-base" content="." />
   <title>GPU 集群监控</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
@@ -11,7 +12,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png" />
   <link rel="stylesheet" href="vendor/element-plus.css" />
-  <link rel="stylesheet" href="style.css?v=20260716-2" />
+  <link rel="stylesheet" href="style.css?v=20260810-4" />
   <script src="vendor/vue.runtime.global.prod.js?v=3.5.39"></script>
   <script src="vendor/element-plus.js"></script>
   <script src="vendor/element-plus-icons.js"></script>
@@ -19,17 +20,17 @@
 <body>
   <div id="app" class="app-shell" v-cloak>
     <header class="command-bar">
-      <div class="brand-block">
+      <a class="brand-block" href="/" :aria-label="translate('appTitle')">
         <div class="brand-mark" aria-hidden="true"><el-icon><Monitor /></el-icon></div>
         <div class="brand-copy">
           <h1>{{ translate('appTitle') }}</h1>
           <p>{{ translate('appSubtitle') }}</p>
         </div>
-      </div>
+      </a>
 
       <div class="node-context" v-if="selectedServer">
         <span class="eyebrow">{{ translate('node') }}</span>
-        <strong>{{ selectedServer.name }}</strong>
+        <strong>{{ serverDisplayName(selectedServer) }}</strong>
       </div>
 
       <div class="command-actions">
@@ -46,7 +47,7 @@
         <div class="node-select-control">
           <span class="sr-only">{{ translate('selectServer') }}</span>
           <el-select v-model="selectedServerId" :placeholder="translate('selectServer')" @change="handleServerChange" :aria-label="translate('selectServer')">
-            <el-option v-for="server in servers" :key="server.id" :label="server.name" :value="server.id"></el-option>
+            <el-option v-for="server in servers" :key="server.id" :label="serverDisplayName(server)" :value="server.id"></el-option>
           </el-select>
         </div>
 
@@ -70,16 +71,9 @@
           </template>
         </el-dropdown>
 
-        <el-dropdown trigger="click" @command="handleThemeChange">
-          <el-button plain :icon="themeIcon" :aria-label="translate('themeLabel')">{{ themeText }}</el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="auto" :disabled="currentTheme === 'auto'"><el-icon><Sunrise /></el-icon>{{ translate('themeMenu.auto') }}</el-dropdown-item>
-              <el-dropdown-item command="light" :disabled="currentTheme === 'light'"><el-icon><Sunny /></el-icon>{{ translate('themeMenu.light') }}</el-dropdown-item>
-              <el-dropdown-item command="dark" :disabled="currentTheme === 'dark'"><el-icon><Moon /></el-icon>{{ translate('themeMenu.dark') }}</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+        <el-tooltip :content="translate('themeLabel')" placement="bottom">
+          <el-button class="theme-toggle-button" plain :icon="themeIcon" :aria-label="translate('themeLabel')" circle @click="toggleTheme" />
+        </el-tooltip>
       </div>
     </header>
 
@@ -290,9 +284,9 @@
       </section>
     </main>
 
-    <footer class="footer-copyright"><p>{{ translate('footer.line1') }}</p></footer>
+    <footer class="footer-copyright"><p>{{ translate('footer.line1') }}</p><p class="icp-placeholder">{{ translate('footer.icpPending') }}</p></footer>
   </div>
   <script src="app.render.js?v=20260716-3"></script>
-  <script src="app.js?v=20260716-4"></script>
+  <script src="app.js?v=20260811-1"></script>
 </body>
 </html>

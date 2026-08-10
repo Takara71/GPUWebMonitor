@@ -3,6 +3,7 @@ import os
 import json
 import requests
 import secrets
+from typing import Any
 from flask import Flask, jsonify, request, make_response, send_from_directory, Response
 from flask_cors import CORS
 from deployment_mode import (
@@ -43,8 +44,15 @@ if DEPLOYMENT_MODE == LAN_MODE:
 
 
 @app.before_request
-def require_dashboard_login():
-    """Enforce Basic auth publicly; LAN mode deliberately has no login."""
+def require_dashboard_login() -> Any:
+    """在公网模式强制校验 Dashboard Basic Auth。
+
+    Args:
+        无。
+
+    Returns:
+        校验通过或局域网模式时返回 ``None``；失败时返回认证响应。
+    """
     if DEPLOYMENT_MODE == LAN_MODE:
         return None
 
@@ -68,8 +76,15 @@ def require_dashboard_login():
         {'WWW-Authenticate': 'Basic realm="GPU Cluster Monitor", charset="UTF-8"'},
     )
 
-def load_config():
-    """读取配置文件"""
+def load_config() -> dict[str, Any]:
+    """读取包含节点元数据和 Agent 地址的配置文件。
+
+    Args:
+        无。
+
+    Returns:
+        配置字典；文件不存在或解析失败时返回空节点配置。
+    """
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -82,22 +97,43 @@ def load_config():
     return {"servers": []}
 
 
-def no_cache_response(response):
-    """Prevent browsers from keeping stale dashboard assets."""
+def no_cache_response(response: Any) -> Any:
+    """为响应添加禁止缓存的 HTTP 头。
+
+    Args:
+        response: 需要修改响应头的 Flask 响应对象。
+
+    Returns:
+        已添加禁止缓存响应头的原响应对象。
+    """
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
 
 @app.route('/')
-def serve_index():
-    """提供前端主页面"""
+def serve_index() -> Any:
+    """提供 GPU Dashboard 的前端入口页面。
+
+    Args:
+        无。
+
+    Returns:
+        禁止缓存的 ``index.html`` Flask 响应。
+    """
     response = make_response(send_from_directory(os.path.join(CURRENT_DIR, '..', 'front'), 'index.html'))
     return no_cache_response(response)
 
 @app.route('/<path:filename>')
-def serve_static(filename):
-    """提供 front/ 目录下的静态资源（app.js, style.css 等）"""
+def serve_static(filename: str) -> Any:
+    """按安全后缀白名单提供前端静态资源。
+
+    Args:
+        filename: ``front`` 目录下的相对文件名。
+
+    Returns:
+        静态文件响应、配置 JSON 或 HTTP 403 错误响应。
+    """
     if filename == 'config.json' and DEPLOYMENT_MODE == LAN_MODE:
         return no_cache_response(jsonify(load_config()))
     if filename.endswith('.json') and DEPLOYMENT_MODE == PUBLIC_MODE:
@@ -110,10 +146,16 @@ def serve_static(filename):
         return jsonify({"error": "File not allowed"}), 403
 
 @app.route('/api/config')
-def get_config():
-    """
-    前端获取服务器列表
-    前端会请求这个接口来获取 config.json 的内容
+def get_config() -> Any:
+    """向前端返回与部署模式匹配的节点列表。
+
+    公网模式会隐藏 Agent URL，局域网模式保留原项目完整配置。
+
+    Args:
+        无。
+
+    Returns:
+        Flask JSON 节点配置响应。
     """
     config = load_config()
     if DEPLOYMENT_MODE == LAN_MODE:
@@ -128,16 +170,23 @@ def get_config():
     ]
     return jsonify({"deployment_mode": PUBLIC_MODE, "servers": public_servers})
 
-@app.route('/api/proxy')
-def proxy_request():
+def proxy_server_request(
+    server_id: str | None,
+    resource: str,
+) -> Any:
+    """把指定节点的状态或历史请求转发给对应 Agent。
+
+    Args:
+        server_id: 前端选择的节点 ID；为空时返回参数错误。
+        resource: Agent 资源名称，只允许 ``status`` 或 ``history``。
+
+    Returns:
+        Flask 可以直接返回的 JSON 响应或 ``(响应, 状态码)`` 元组。
     """
-    核心代理逻辑
-    前端请求: /api/proxy?id=node1
-    后端执行: 查找 node1 URL -> 请求内网 -> 返回结果
-    """
-    server_id = request.args.get('id')
     if not server_id:
         return jsonify({"code": 400, "msg": "缺少参数: id"}), 400
+    if resource not in {"status", "history"}:
+        return jsonify({"code": 404, "msg": "不支持的 Agent 资源"}), 404
 
     config = load_config()
     servers = config.get('servers', [])
@@ -153,8 +202,7 @@ def proxy_request():
         return jsonify({"code": 500, "msg": "该服务器配置缺少 URL"}), 500
 
     # 拼接目标 Agent 的 API 地址
-    use_history = request.args.get('history') == '1'
-    if use_history:
+    if resource == "history":
         limit = request.args.get('limit', '100')
         target_api = f"{base_url}/api/history?limit={limit}"
     else:
@@ -184,6 +232,35 @@ def proxy_request():
     except Exception as e:
         print(f"Proxy Error: {e}")
         return jsonify({"code": 500, "msg": f"代理服务内部错误: {str(e)}"}), 500
+
+
+@app.route('/api/nodes/<server_id>/<resource>')
+def proxy_node_resource(server_id: str, resource: str) -> Any:
+    """提供适合 Nginx 节点直连架构的稳定 API 路径。
+
+    Args:
+        server_id: URL 中的节点唯一 ID。
+        resource: 请求的 Agent 资源名称。
+
+    Returns:
+        对应节点的 Agent JSON 响应。
+    """
+    return proxy_server_request(server_id, resource)
+
+
+@app.route('/api/proxy')
+def proxy_request() -> Any:
+    """兼容旧版基于查询参数的 Dashboard 代理接口。
+
+    Args:
+        无。
+
+    Returns:
+        对应节点的状态或历史 JSON 响应。
+    """
+    server_id = request.args.get('id')
+    resource = "history" if request.args.get('history') == '1' else "status"
+    return proxy_server_request(server_id, resource)
 
 if __name__ == '__main__':
     print(f"Dashboard Proxy running on {DASHBOARD_HOST}:{DASHBOARD_PORT} ({DEPLOYMENT_MODE})")

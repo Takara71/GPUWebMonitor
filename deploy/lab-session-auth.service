@@ -1,0 +1,33 @@
+[Unit]
+Description=Lab status session authentication
+After=network.target
+Before=nginx.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/python3 /opt/lab-status/session_auth.py --host 127.0.0.1 --port 28458 --htpasswd /etc/nginx/.htpasswd-lab-monitor --secret-file /etc/lab-status/session-secret
+Restart=on-failure
+RestartSec=3s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+MemoryMax=64M
+TasksMax=32
+
+[Install]
+WantedBy=multi-user.target

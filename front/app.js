@@ -5,11 +5,15 @@ const {
   WarningFilled, CircleCheckFilled, Clock, Connection, DataLine,
 } = ElementPlusIconsVue;
 
-const API_BASE_URL = '';
+const API_BASE_URL = new URL(
+  document.querySelector('meta[name="gpu-monitor-api-base"]')?.content || '.',
+  window.location.href,
+).pathname.replace(/\/$/, '');
 const REFRESH_INTERVAL = 3000;
 const STALE_AFTER = REFRESH_INTERVAL * 3;
 const MAX_SAMPLES = 20;
 const AUTO_REFRESH_STORAGE_KEY = 'auto-refresh-enabled';
+const COLOR_THEME_STORAGE_KEY = 'color-theme-preference';
 
 const app = createApp({
   render: window.GpuMonitorRender,
@@ -41,7 +45,7 @@ const app = createApp({
         process: { title: '计算进程', count: (n) => `${n} 个进程`, pid: 'PID', user: '用户', name: '进程名', memory: '显存占用', command: '命令', empty: '该 GPU 暂无活跃计算进程' },
         units: { cards: (n) => `${n} 张`, unavailable: '不可用' },
         errors: { noConfigTitle: '未配置计算节点', noConfigDesc: '未找到服务器配置，请检查 front/config.json。', configFailedTitle: '无法加载节点配置', loadServerList: '无法加载服务器列表，请确认 Dashboard 服务正在运行。', nodeFailedTitle: '无法获取当前节点数据', nodeFailedDesc: '已保留最近一次有效数据。请检查节点网络或 Agent 服务后重试。', fetchFailed: (m) => `获取数据失败：${m}` },
-        footer: { line1: '© 2026 GPU 集群监控面板 · Shushu Internet Center, Anhui University'},
+        footer: { line1: '© 2026 GPUWebMonitor', icpPending: 'ICP备案信息预留（审核中）' },
       },
       en: {
         appTitle: 'GPU Cluster Monitor', appSubtitle: 'Live node resources, GPU workloads, and compute processes',
@@ -58,7 +62,7 @@ const app = createApp({
         process: { title: 'Compute processes', count: (n) => `${n} processes`, pid: 'PID', user: 'User', name: 'Process', memory: 'GPU memory', command: 'Command', empty: 'No active compute process on this GPU' },
         units: { cards: (n) => `${n} cards`, unavailable: 'Unavailable' },
         errors: { noConfigTitle: 'No compute nodes configured', noConfigDesc: 'No server configuration was found. Check front/config.json.', configFailedTitle: 'Unable to load node configuration', loadServerList: 'Unable to load the server list. Make sure Dashboard is running.', nodeFailedTitle: 'Unable to retrieve node data', nodeFailedDesc: 'The latest valid data is preserved. Check the node network or Agent service and retry.', fetchFailed: (m) => `Failed to fetch data: ${m}` },
-        footer: { line1: '© 2026 GPU Cluster Monitor · Shushu Internet Center, Anhui University' },
+        footer: { line1: '© 2026 GPUWebMonitor', icpPending: 'ICP filing information reserved (under review)' },
       },
       ja: {
         appTitle: 'GPU クラスターモニター', appSubtitle: 'ノード資源、GPU 負荷、計算プロセスをリアルタイム監視',
@@ -75,7 +79,7 @@ const app = createApp({
         process: { title: '計算プロセス', count: (n) => `${n} プロセス`, pid: 'PID', user: 'ユーザー', name: 'プロセス', memory: 'GPU メモリ', command: 'コマンド', empty: 'この GPU にアクティブな計算プロセスはありません' },
         units: { cards: (n) => `${n} 枚`, unavailable: '利用不可' },
         errors: { noConfigTitle: '計算ノードが未設定です', noConfigDesc: 'サーバー設定がありません。front/config.json を確認してください。', configFailedTitle: 'ノード設定を読み込めません', loadServerList: 'サーバー一覧を読み込めません。Dashboard の起動状態を確認してください。', nodeFailedTitle: 'ノードデータを取得できません', nodeFailedDesc: '直近の有効データを保持しています。ネットワークまたは Agent を確認して再試行してください。', fetchFailed: (m) => `データ取得失敗：${m}` },
-        footer: { line1: '© 2026 GPU クラスターモニター · 安徽大学 Shushu Internet Center'},
+        footer: { line1: '© 2026 GPUWebMonitor', icpPending: 'ICP 届出情報の表示欄（審査中）' },
       },
     };
 
@@ -91,6 +95,7 @@ const app = createApp({
     const refreshTimer = ref(null);
     const currentLocale = ref('zh');
     const currentTheme = ref('auto');
+    const resolvedTheme = ref('light');
     const requestController = ref(null);
     const requestSequence = ref(0);
     const samplesByServer = ref({});
@@ -107,6 +112,7 @@ const app = createApp({
     let freshnessTimer = null;
     let themeMediaQuery = null;
     let themeMediaListener = null;
+    let colorThemeStorageListener = null;
 
     const trendRanges = { session: { seconds: null }, '10m': { seconds: 600 }, '30m': { seconds: 1800 }, '1h': { seconds: 3600 }, '6h': { seconds: 21600 }, '12h': { seconds: 43200 } };
 
@@ -116,9 +122,12 @@ const app = createApp({
       return typeof value === 'function' ? value(...args) : (value ?? key);
     };
     const localeText = computed(() => localeMap[currentLocale.value]?.label || '中文');
-    const themeText = computed(() => translate(`theme.${currentTheme.value}`));
-    const themeIcon = computed(() => currentTheme.value === 'light' ? Sunny : currentTheme.value === 'dark' ? Moon : Sunrise);
+    const themeIcon = computed(() => resolvedTheme.value === 'dark' ? Moon : Sunny);
     const selectedServer = computed(() => servers.value.find((server) => server.id === selectedServerId.value));
+    const serverDisplayName = (server) => {
+      if (!server) return '';
+      return String(server.name || server.id || 'GPU node');
+    };
     const gpuList = computed(() => currentData.value?.gpu?.gpus || []);
     const sortedSystemProcesses = computed(() => {
       const processes = [...(currentData.value?.system?.processes || [])];
@@ -325,7 +334,7 @@ const app = createApp({
       historyAbortController = new AbortController();
       historyLoading.value = true;
       try {
-        const resp = await fetchApi(`/api/proxy?id=${encodeURIComponent(serverId)}&history=1&limit=${limit}`, { signal: historyAbortController.signal });
+        const resp = await fetchApi(`/api/nodes/${encodeURIComponent(serverId)}/history?limit=${limit}`, { signal: historyAbortController.signal });
         const result = await readResponse(resp);
         if (result.code !== 200) throw new Error(result.msg);
         historySamples.value = (result.data || []).map((row) => ({
@@ -383,9 +392,22 @@ const app = createApp({
 
     const applyTheme = (theme) => {
       const resolved = theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+      resolvedTheme.value = resolved;
       document.documentElement.setAttribute('data-theme', resolved);
     };
+
+    /**
+     * 应用首页选择的共享强调配色。
+     *
+     * @param {string} theme - green、ocean、violet、amber、anime 或 fighter。
+     * @returns {void}
+     */
+    const applyColorTheme = (theme) => {
+      const normalized = ['green', 'ocean', 'violet', 'amber', 'anime', 'fighter'].includes(theme) ? theme : 'green';
+      document.documentElement.setAttribute('data-color-theme', normalized);
+    };
     const handleThemeChange = (theme) => { currentTheme.value = theme; localStorage.setItem('theme-preference', theme); applyTheme(theme); };
+    const toggleTheme = () => handleThemeChange(resolvedTheme.value === 'dark' ? 'light' : 'dark');
     const applyLocale = (locale) => {
       const normalized = localeMap[locale] ? locale : 'zh';
       currentLocale.value = normalized;
@@ -404,6 +426,11 @@ const app = createApp({
       const text = await response.text();
       let result = null;
       try { result = text ? JSON.parse(text) : null; } catch (_) { /* handled below */ }
+      if (response.status === 401) {
+        const next = `${window.location.pathname}${window.location.search}`;
+        window.location.replace(`/?login=1&next=${encodeURIComponent(next)}`);
+        throw new Error('Authentication required');
+      }
       if (!response.ok) throw new Error(result?.msg || `HTTP ${response.status}`);
       if (!result) throw new Error('Invalid JSON response');
       return result;
@@ -436,7 +463,7 @@ const app = createApp({
       loading.value = true;
       nodeError.value = '';
       try {
-        const response = await fetchApi(`/api/proxy?id=${encodeURIComponent(serverId)}`, { signal: controller.signal });
+        const response = await fetchApi(`/api/nodes/${encodeURIComponent(serverId)}/status`, { signal: controller.signal });
         const result = await readResponse(response);
         if (result.code !== 200) throw new Error(result.msg || `API ${result.code}`);
         if (sequence !== requestSequence.value || selectedServerId.value !== serverId) return;
@@ -466,8 +493,11 @@ const app = createApp({
         const response = await fetchApi('/api/config');
         const config = await readResponse(response);
         servers.value = Array.isArray(config.servers) ? config.servers : [];
+        const requested = new URLSearchParams(window.location.search).get('node');
         const saved = localStorage.getItem('selected-server-id');
-        selectedServerId.value = servers.value.some((server) => server.id === saved) ? saved : (servers.value[0]?.id || null);
+        selectedServerId.value = servers.value.some((server) => server.id === requested)
+          ? requested
+          : (servers.value.some((server) => server.id === saved) ? saved : (servers.value[0]?.id || null));
         if (selectedServerId.value) {
           localStorage.setItem('selected-server-id', selectedServerId.value);
           await loadSelectedServerData('initial');
@@ -490,6 +520,9 @@ const app = createApp({
         historySamples.value = [];
       }
       localStorage.setItem('selected-server-id', selectedServerId.value);
+      const url = new URL(window.location.href);
+      url.searchParams.set('node', selectedServerId.value);
+      window.history.replaceState(null, '', url);
       requestSequence.value += 1;
       requestController.value?.abort();
       nodeError.value = '';
@@ -511,11 +544,16 @@ const app = createApp({
       savedAutoRefresh = autoRefresh.value;
       currentTheme.value = localStorage.getItem('theme-preference') || 'auto';
       applyTheme(currentTheme.value);
+      applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY) || 'green');
       const browserLocale = (navigator.language || '').toLowerCase();
       applyLocale(localStorage.getItem('locale-preference') || (browserLocale.startsWith('en') ? 'en' : browserLocale.startsWith('ja') ? 'ja' : 'zh'));
       themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       themeMediaListener = () => { if (currentTheme.value === 'auto') applyTheme('auto'); };
       themeMediaQuery.addEventListener('change', themeMediaListener);
+      colorThemeStorageListener = (event) => {
+        if (event.key === COLOR_THEME_STORAGE_KEY && event.newValue) applyColorTheme(event.newValue);
+      };
+      window.addEventListener('storage', colorThemeStorageListener);
       freshnessTimer = window.setInterval(() => { freshnessTick.value += 1; }, 10000);
       loadConfig();
     });
@@ -524,17 +562,18 @@ const app = createApp({
       requestController.value?.abort();
       if (freshnessTimer) window.clearInterval(freshnessTimer);
       if (themeMediaQuery && themeMediaListener) themeMediaQuery.removeEventListener('change', themeMediaListener);
+      if (colorThemeStorageListener) window.removeEventListener('storage', colorThemeStorageListener);
     });
 
     return {
       servers, selectedServerId, selectedServer, currentData, gpuList, sortedSystemProcesses, systemUsers, systemProcessInstanceCount, systemProcessSort, loading, configLoading, configError, nodeError,
-      autoRefresh, currentLocale, currentTheme, localeText, themeText, themeIcon, RefreshIcon,
+      autoRefresh, currentLocale, currentTheme, resolvedTheme, localeText, themeIcon, RefreshIcon,
       currentSamples, networkRates, trendSeries, activeTrendSample, connectionState, relativeUpdate, lastUpdateTime,
       trendRange, trendRanges, historyLoading,
       translate, safeNumber, formatNumber, formatPercent, formatBytes, formatFrequency, formatPower, formatTemperature, formatProcessInstances, formatProcessPids,
       calcMemoryPercent, getTempStatus, getValColorClass, getTemperatureState,
       updateTrendHover, clearTrendHover, setTrendRange, setSystemProcessSort,
-      handleThemeChange, handleLocaleChange, handleServerChange, refreshCurrent, toggleAutoRefresh, loadConfig,
+      serverDisplayName, toggleTheme, handleLocaleChange, handleServerChange, refreshCurrent, toggleAutoRefresh, loadConfig,
     };
   },
 });

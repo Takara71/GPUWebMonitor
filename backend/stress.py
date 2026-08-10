@@ -6,7 +6,15 @@ import time
 
 URL = "http://localhost:15896/api/history?limit=100"
 
-def make_request():
+def make_request() -> None:
+    """向历史接口发送一次请求并输出响应结果。
+
+    Args:
+        无。
+
+    Returns:
+        无返回值。
+    """
     try:
         resp = requests.get(URL)
         print(f"Status: {resp.status_code}, Data length: {len(resp.text)}")

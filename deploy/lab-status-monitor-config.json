@@ -1,0 +1,8 @@
+{
+  "deployment_mode": "public",
+  "servers": [
+    {"id": "gpu-node-a", "name": "GPU Node A"},
+    {"id": "gpu-node-b", "name": "GPU Node B"},
+    {"id": "gpu-node-c", "name": "GPU Node C"}
+  ]
+}

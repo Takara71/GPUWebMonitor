@@ -11,11 +11,20 @@ import json
 import os
 import tempfile
 import time
+from typing import Any
 
 import psutil
 
 
-def collect_snapshot():
+def collect_snapshot() -> dict[str, Any]:
+    """采集全部可访问进程的 PSS、USS 与 RSS 内存数据。
+
+    Args:
+        无。
+
+    Returns:
+        包含采集时间和按 PID 索引的进程内存快照。
+    """
     processes = {}
     for process in psutil.process_iter(attrs=['pid', 'create_time'], ad_value=None):
         try:
@@ -38,7 +47,16 @@ def collect_snapshot():
     }
 
 
-def write_snapshot(output_path, snapshot):
+def write_snapshot(output_path: str, snapshot: dict[str, Any]) -> None:
+    """把内存快照安全地原子替换到目标路径。
+
+    Args:
+        output_path: 最终 JSON 快照文件路径。
+        snapshot: 需要写入的进程内存快照。
+
+    Returns:
+        无返回值。
+    """
     output_path = os.path.abspath(output_path)
     output_dir = os.path.dirname(output_path)
     os.makedirs(output_dir, mode=0o755, exist_ok=True)
@@ -55,7 +73,15 @@ def write_snapshot(output_path, snapshot):
             os.unlink(temporary_path)
 
 
-def main():
+def main() -> None:
+    """解析输出路径参数并生成一次特权内存快照。
+
+    Args:
+        无。
+
+    Returns:
+        无返回值。
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--output',
