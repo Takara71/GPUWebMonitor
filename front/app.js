@@ -45,7 +45,7 @@ const app = createApp({
         process: { title: '计算进程', count: (n) => `${n} 个进程`, pid: 'PID', user: '用户', name: '进程名', memory: '显存占用', command: '命令', empty: '该 GPU 暂无活跃计算进程' },
         units: { cards: (n) => `${n} 张`, unavailable: '不可用' },
         errors: { noConfigTitle: '未配置计算节点', noConfigDesc: '未找到服务器配置，请检查 front/config.json。', configFailedTitle: '无法加载节点配置', loadServerList: '无法加载服务器列表，请确认 Dashboard 服务正在运行。', nodeFailedTitle: '无法获取当前节点数据', nodeFailedDesc: '已保留最近一次有效数据。请检查节点网络或 Agent 服务后重试。', fetchFailed: (m) => `获取数据失败：${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor', icpPending: 'ICP备案信息预留（审核中）' },
+        footer: { line1: '© 2026 GPUWebMonitor' },
       },
       en: {
         appTitle: 'GPU Cluster Monitor', appSubtitle: 'Live node resources, GPU workloads, and compute processes',
@@ -62,7 +62,7 @@ const app = createApp({
         process: { title: 'Compute processes', count: (n) => `${n} processes`, pid: 'PID', user: 'User', name: 'Process', memory: 'GPU memory', command: 'Command', empty: 'No active compute process on this GPU' },
         units: { cards: (n) => `${n} cards`, unavailable: 'Unavailable' },
         errors: { noConfigTitle: 'No compute nodes configured', noConfigDesc: 'No server configuration was found. Check front/config.json.', configFailedTitle: 'Unable to load node configuration', loadServerList: 'Unable to load the server list. Make sure Dashboard is running.', nodeFailedTitle: 'Unable to retrieve node data', nodeFailedDesc: 'The latest valid data is preserved. Check the node network or Agent service and retry.', fetchFailed: (m) => `Failed to fetch data: ${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor', icpPending: 'ICP filing information reserved (under review)' },
+        footer: { line1: '© 2026 GPUWebMonitor' },
       },
       ja: {
         appTitle: 'GPU クラスターモニター', appSubtitle: 'ノード資源、GPU 負荷、計算プロセスをリアルタイム監視',
@@ -79,7 +79,7 @@ const app = createApp({
         process: { title: '計算プロセス', count: (n) => `${n} プロセス`, pid: 'PID', user: 'ユーザー', name: 'プロセス', memory: 'GPU メモリ', command: 'コマンド', empty: 'この GPU にアクティブな計算プロセスはありません' },
         units: { cards: (n) => `${n} 枚`, unavailable: '利用不可' },
         errors: { noConfigTitle: '計算ノードが未設定です', noConfigDesc: 'サーバー設定がありません。front/config.json を確認してください。', configFailedTitle: 'ノード設定を読み込めません', loadServerList: 'サーバー一覧を読み込めません。Dashboard の起動状態を確認してください。', nodeFailedTitle: 'ノードデータを取得できません', nodeFailedDesc: '直近の有効データを保持しています。ネットワークまたは Agent を確認して再試行してください。', fetchFailed: (m) => `データ取得失敗：${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor', icpPending: 'ICP 届出情報の表示欄（審査中）' },
+        footer: { line1: '© 2026 GPUWebMonitor' },
       },
     };
 
@@ -107,12 +107,13 @@ const app = createApp({
     const historySamples = ref([]);
     const historyLoading = ref(false);
     const systemProcessSort = ref('cpu');
-    let savedAutoRefresh = true;
     let historyAbortController = null;
     let freshnessTimer = null;
     let themeMediaQuery = null;
     let themeMediaListener = null;
     let colorThemeStorageListener = null;
+    let activeThemeTransition = null;
+    let themeFallbackTimer = null;
 
     const trendRanges = { session: { seconds: null }, '10m': { seconds: 600 }, '30m': { seconds: 1800 }, '1h': { seconds: 3600 }, '6h': { seconds: 21600 }, '12h': { seconds: 43200 } };
 
@@ -354,12 +355,13 @@ const app = createApp({
       if (trendRange.value === key) return;
       if (key === 'session') {
         trendRange.value = 'session';
-        autoRefresh.value = savedAutoRefresh;
+        historyAbortController?.abort();
+        historyAbortController = null;
+        historyLoading.value = false;
         historySamples.value = [];
         activeTrendIndex.value = null;
+        scheduleRefresh();
       } else {
-        savedAutoRefresh = autoRefresh.value;
-        autoRefresh.value = false;
         clearRefreshTimer();
         trendRange.value = key;
         activeTrendIndex.value = null;
@@ -390,6 +392,12 @@ const app = createApp({
       return { key: 'idle', label: translate('status.idle'), icon: 'clock' };
     });
 
+    /**
+     * 将指定明暗模式应用到页面。
+     *
+     * @param {string} theme - auto、light 或 dark。
+     * @returns {void}
+     */
     const applyTheme = (theme) => {
       const resolved = theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
       resolvedTheme.value = resolved;
@@ -399,15 +407,67 @@ const app = createApp({
     /**
      * 应用首页选择的共享强调配色。
      *
-     * @param {string} theme - green、ocean、violet、amber、anime 或 fighter。
+     * @param {string} theme - green、ocean、violet、amber、anime、fighter 或 qiying。
      * @returns {void}
      */
     const applyColorTheme = (theme) => {
-      const normalized = ['green', 'ocean', 'violet', 'amber', 'anime', 'fighter'].includes(theme) ? theme : 'green';
+      const normalized = ['green', 'ocean', 'violet', 'amber', 'anime', 'fighter', 'qiying'].includes(theme) ? theme : 'green';
       document.documentElement.setAttribute('data-color-theme', normalized);
     };
-    const handleThemeChange = (theme) => { currentTheme.value = theme; localStorage.setItem('theme-preference', theme); applyTheme(theme); };
-    const toggleTheme = () => handleThemeChange(resolvedTheme.value === 'dark' ? 'light' : 'dark');
+    /**
+     * 保存并应用用户选择的明暗模式。
+     *
+     * @param {string} theme - light 或 dark。
+     * @returns {void}
+     */
+    const handleThemeChange = (theme) => {
+      currentTheme.value = theme;
+      localStorage.setItem('theme-preference', theme);
+      applyTheme(theme);
+    };
+
+    /**
+     * 在浏览器支持时使用圆形揭示动画切换明暗模式，否则使用颜色渐变回退。
+     *
+     * @param {MouseEvent|null} event - 主题按钮的点击事件，用于确定动画起点。
+     * @returns {void}
+     */
+    const toggleTheme = (event = null) => {
+      const nextTheme = resolvedTheme.value === 'dark' ? 'light' : 'dark';
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const applyNextTheme = () => handleThemeChange(nextTheme);
+      const root = document.documentElement;
+
+      if (reduceMotion || typeof document.startViewTransition !== 'function') {
+        if (themeFallbackTimer) window.clearTimeout(themeFallbackTimer);
+        root.classList.add('theme-transition-fallback');
+        window.requestAnimationFrame(applyNextTheme);
+        themeFallbackTimer = window.setTimeout(() => {
+          root.classList.remove('theme-transition-fallback');
+          themeFallbackTimer = null;
+        }, 460);
+        return;
+      }
+
+      const bounds = event?.currentTarget?.getBoundingClientRect?.();
+      const originX = bounds ? bounds.left + bounds.width / 2 : window.innerWidth - 42;
+      const originY = bounds ? bounds.top + bounds.height / 2 : 42;
+      const radius = Math.hypot(
+        Math.max(originX, window.innerWidth - originX),
+        Math.max(originY, window.innerHeight - originY),
+      );
+      root.style.setProperty('--theme-transition-x', `${originX}px`);
+      root.style.setProperty('--theme-transition-y', `${originY}px`);
+      root.style.setProperty('--theme-transition-radius', `${radius}px`);
+      activeThemeTransition?.skipTransition?.();
+      const transition = document.startViewTransition(applyNextTheme);
+      activeThemeTransition = transition;
+      transition.finished
+        .catch(() => {})
+        .finally(() => {
+          if (activeThemeTransition === transition) activeThemeTransition = null;
+        });
+    };
     const applyLocale = (locale) => {
       const normalized = localeMap[locale] ? locale : 'zh';
       currentLocale.value = normalized;
@@ -449,7 +509,9 @@ const app = createApp({
     };
     const scheduleRefresh = () => {
       clearRefreshTimer();
-      if (autoRefresh.value) refreshTimer.value = window.setTimeout(() => loadSelectedServerData('auto'), REFRESH_INTERVAL);
+      if (autoRefresh.value && trendRange.value === 'session') {
+        refreshTimer.value = window.setTimeout(() => loadSelectedServerData('auto'), REFRESH_INTERVAL);
+      }
     };
 
     const loadSelectedServerData = async (source = 'manual') => {
@@ -516,7 +578,6 @@ const app = createApp({
       activeTrendIndex.value = null;
       if (trendRange.value !== 'session') {
         trendRange.value = 'session';
-        autoRefresh.value = savedAutoRefresh;
         historySamples.value = [];
       }
       localStorage.setItem('selected-server-id', selectedServerId.value);
@@ -532,7 +593,6 @@ const app = createApp({
     };
     const refreshCurrent = () => loadSelectedServerData('manual');
     const toggleAutoRefresh = () => {
-      savedAutoRefresh = autoRefresh.value;
       localStorage.setItem(AUTO_REFRESH_STORAGE_KEY, String(autoRefresh.value));
       if (autoRefresh.value) scheduleRefresh();
       else clearRefreshTimer();
@@ -541,7 +601,6 @@ const app = createApp({
     onMounted(() => {
       const storedAutoRefresh = localStorage.getItem(AUTO_REFRESH_STORAGE_KEY);
       autoRefresh.value = storedAutoRefresh === null ? true : storedAutoRefresh === 'true';
-      savedAutoRefresh = autoRefresh.value;
       currentTheme.value = localStorage.getItem('theme-preference') || 'auto';
       applyTheme(currentTheme.value);
       applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY) || 'green');
@@ -563,6 +622,8 @@ const app = createApp({
       if (freshnessTimer) window.clearInterval(freshnessTimer);
       if (themeMediaQuery && themeMediaListener) themeMediaQuery.removeEventListener('change', themeMediaListener);
       if (colorThemeStorageListener) window.removeEventListener('storage', colorThemeStorageListener);
+      if (themeFallbackTimer) window.clearTimeout(themeFallbackTimer);
+      document.documentElement.classList.remove('theme-transition-fallback');
     });
 
     return {

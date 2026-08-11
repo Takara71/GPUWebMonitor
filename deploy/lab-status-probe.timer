@@ -2,8 +2,7 @@
 Description=Refresh lightweight lab server status every minute
 
 [Timer]
-OnBootSec=15s
-OnUnitActiveSec=60s
+OnCalendar=*-*-* *:*:00
 AccuracySec=2s
 Persistent=true
 Unit=lab-status-probe.service

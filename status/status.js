@@ -7,6 +7,8 @@ const AUTO_REFRESH_SECONDS = 60;
 const LOCALE_STORAGE_KEY = 'locale-preference';
 const THEME_STORAGE_KEY = 'theme-preference';
 const COLOR_THEME_STORAGE_KEY = 'color-theme-preference';
+const FIGHTER_NODE_ORDER = ['ryu', 'ken', 'akuma'];
+const COLOR_THEMES = ['green', 'ocean', 'violet', 'amber', 'anime', 'fighter', 'qiying'];
 
 const LOCALES = {
   zh: { htmlLang: 'zh-CN', label: '中文' },
@@ -17,9 +19,10 @@ const LOCALES = {
 const TRANSLATIONS = {
   zh: {
     pageTitle: '实验室服务状态', homeAria: '返回实验室服务状态首页', title: '实验室服务状态', subtitle: 'GPU 计算节点与服务可用性',
-    language: '语言', themeToggle: '切换明暗模式', colorTheme: '切换配色主题', themes: { green: '翠绿', ocean: '海蓝', violet: '紫罗兰', amber: '暖橙', anime: '星樱', fighter: '斗魂' }, logout: '退出', summaryAria: '状态摘要',
+    language: '语言', themeToggle: '切换明暗模式', colorTheme: '切换配色主题', themes: { green: '翠绿', ocean: '海蓝', violet: '紫罗兰', amber: '暖橙', anime: '星樱', fighter: '斗魂', qiying: '柒影' }, logout: '退出', summaryAria: '状态摘要',
     hero: { aria: '星樱实验室主题主视觉', title: '星樱计算观测室', subtitle: '在樱色晨光中，守望每一次计算。', badge: '原创主题 · 实时状态' },
     fightHero: { aria: '斗魂街头格斗主题主视觉', title: '街头斗魂观测站', subtitle: '以拳为信号，让每一次计算正面交锋。', badge: '原创格斗主题 · 实时状态' },
+    qiyingHero: { aria: '柒影刺客主题主视觉', title: '柒影刃域观测站', subtitle: '刀锋划开夜色，守住每一次运算的脉搏。', badge: '柒影主题 · 实时状态' },
     refresh: { loading: '正在获取状态', updating: '正在刷新', countdown: (seconds) => `刷新时间 ${seconds} 秒`, manualAria: '立即刷新状态并重置倒计时' },
     summary: { total: '监控节点', totalHint: '全部计算服务器', online: '正常节点', onlineHint: 'FRP 与 Agent 可连接', offline: '异常节点', offlineHint: '连接超时或中断', availability: '平均可用率', availabilityHint: '最近 30 天' },
     node: { averageLatency: '平均响应时间', last24h: '最近 24 小时', availability: '平均运行时间', cloudHistory: '最近30天', historyAria: '最近三十天服务状态', daysAgo: '30 天前', today: '今天', online: '在线', offline: '离线', checked: (time) => `检测于 ${time}`, healthy: '运行正常', unhealthy: '连接异常', failed: '连接失败', empty: '尚未配置计算节点', tooltipAvailability: (value) => `可用率：${value}` },
@@ -27,16 +30,17 @@ const TRANSLATIONS = {
     ssh: { copyAria: '复制 SSH 连接指令', copied: '已复制', failed: '复制失败' },
     latency: { title: '响应时间趋势', average: '24 小时平均', openAria: '查看响应时间趋势', closeAria: '关闭响应时间趋势', chartAria: '最近二十四小时响应时间折线图', empty: '最近 24 小时暂无响应时间样本' },
     incident: { title: '故障记录', count: (value) => `${value} 条`, empty: '近期无故障记录', ongoing: (duration) => `持续中 · ${duration}` },
-    auth: { loginResource: '登录查看资源占用', viewResource: '查看资源占用', secureAccess: '安全访问', title: '登录查看资源占用', close: '关闭登录框', description: '验证通过后可查看已配置计算服务器的详细资源和进程信息。', username: '用户名', password: '密码', remember: '保持登录 30 天', submit: '安全登录', submitting: '正在验证…', security: '会话保存在 HttpOnly Cookie 中，网页脚本无法读取密码或登录令牌。', invalid: '用户名或密码错误。', locked: (seconds) => `尝试次数过多，请在 ${seconds} 秒后重试。`, failed: '登录服务暂时不可用，请稍后重试。' },
-    footer: { description: '实验室基础设施状态 · 详细资源信息需要登录', icp: 'ICP备案信息预留（审核中）', waiting: '等待首次检测', checked: (time) => `最后检测：${time}` },
+    auth: { loginResource: '登录查看资源占用', viewResource: '查看资源占用', secureAccess: '安全访问', title: '用户登录', close: '关闭登录框', description: '登录以查看GPU服务器的详细资源和进程信息', username: '用户名', password: '密码', remember: '保持登录 30 天', submit: '安全登录', submitting: '正在验证…', invalid: '用户名或密码错误。', locked: (seconds) => `尝试次数过多，请在 ${seconds} 秒后重试。`, failed: '登录服务暂时不可用，请稍后重试。' },
+    footer: { description: '实验室基础设施状态 · 详细资源信息需要登录', waiting: '等待首次检测', checked: (time) => `最后检测：${time}` },
     errors: { load: (message) => `暂时无法读取状态数据：${message}` },
     duration: { seconds: (value) => `${value} 秒`, minutes: (value) => `${value} 分钟`, hours: (value) => `${value} 小时`, days: (value) => `${value} 天` },
   },
   en: {
     pageTitle: 'Lab Service Status', homeAria: 'Return to the lab service status home page', title: 'Lab Service Status', subtitle: 'GPU compute nodes and service availability',
-    language: 'Language', themeToggle: 'Toggle light and dark mode', colorTheme: 'Change color theme', themes: { green: 'Emerald', ocean: 'Ocean', violet: 'Violet', amber: 'Amber', anime: 'Starlit Sakura', fighter: 'Fighting Soul' }, logout: 'Sign out', summaryAria: 'Status summary',
+    language: 'Language', themeToggle: 'Toggle light and dark mode', colorTheme: 'Change color theme', themes: { green: 'Emerald', ocean: 'Ocean', violet: 'Violet', amber: 'Amber', anime: 'Starlit Sakura', fighter: 'Fighting Soul', qiying: 'Seven' }, logout: 'Sign out', summaryAria: 'Status summary',
     hero: { aria: 'Hoshizakura laboratory theme key visual', title: 'Hoshizakura Compute Observatory', subtitle: 'Watching over every computation in the sakura morning light.', badge: 'Original theme · Live status' },
     fightHero: { aria: 'Fighting Soul street tournament theme key visual', title: 'Fighting Soul Observatory', subtitle: 'Every signal throws a strike. Every computation enters the ring.', badge: 'Original fight theme · Live status' },
+    qiyingHero: { aria: 'Seven assassin theme key visual', title: 'Seven · Blade Signal', subtitle: 'A blade parts the night and guards every pulse of computation.', badge: 'Seven theme · Live status' },
     refresh: { loading: 'Loading status', updating: 'Refreshing', countdown: (seconds) => `Refresh in ${seconds}s`, manualAria: 'Refresh status now and reset the countdown' },
     summary: { total: 'Monitored nodes', totalHint: 'All compute servers', online: 'Healthy nodes', onlineHint: 'FRP and Agent are reachable', offline: 'Affected nodes', offlineHint: 'Timed out or disconnected', availability: 'Average uptime', availabilityHint: 'Last 30 days' },
     node: { averageLatency: 'Average response time', last24h: 'Last 24 hours', availability: 'Average uptime', cloudHistory: 'Last 30 days', historyAria: 'Service status for the last thirty days', daysAgo: '30 days ago', today: 'Today', online: 'Online', offline: 'Offline', checked: (time) => `Checked ${time}`, healthy: 'Operating normally', unhealthy: 'Connection unavailable', failed: 'Connection failed', empty: 'No compute node is configured', tooltipAvailability: (value) => `Availability: ${value}` },
@@ -44,16 +48,17 @@ const TRANSLATIONS = {
     ssh: { copyAria: 'Copy SSH connection command', copied: 'Copied', failed: 'Copy failed' },
     latency: { title: 'Response time trend', average: '24-hour average', openAria: 'View response time trend', closeAria: 'Close response time trend', chartAria: 'Response time chart for the last 24 hours', empty: 'No response time samples in the last 24 hours' },
     incident: { title: 'Incidents', count: (value) => `${value}`, empty: 'No recent incidents', ongoing: (duration) => `Ongoing · ${duration}` },
-    auth: { loginResource: 'Sign in for resource usage', viewResource: 'View resource usage', secureAccess: 'SECURE ACCESS', title: 'Sign in for resource usage', close: 'Close sign-in dialog', description: 'After verification, you can view detailed resource and process information for the configured compute servers.', username: 'Username', password: 'Password', remember: 'Keep me signed in for 30 days', submit: 'Secure sign in', submitting: 'Verifying…', security: 'The session is stored in an HttpOnly cookie. Page scripts cannot read your password or session token.', invalid: 'Incorrect username or password.', locked: (seconds) => `Too many attempts. Try again in ${seconds} seconds.`, failed: 'The sign-in service is temporarily unavailable.' },
-    footer: { description: 'Lab infrastructure status · detailed resource data requires sign-in', icp: 'ICP filing information reserved (under review)', waiting: 'Waiting for the first check', checked: (time) => `Last check: ${time}` },
+    auth: { loginResource: 'Sign in for resource usage', viewResource: 'View resource usage', secureAccess: 'SECURE ACCESS', title: 'User Sign In', close: 'Close sign-in dialog', description: 'Sign in to view detailed GPU server resources and process information.', username: 'Username', password: 'Password', remember: 'Keep me signed in for 30 days', submit: 'Secure sign in', submitting: 'Verifying…', invalid: 'Incorrect username or password.', locked: (seconds) => `Too many attempts. Try again in ${seconds} seconds.`, failed: 'The sign-in service is temporarily unavailable.' },
+    footer: { description: 'Lab infrastructure status · detailed resource data requires sign-in', waiting: 'Waiting for the first check', checked: (time) => `Last check: ${time}` },
     errors: { load: (message) => `Unable to load status data: ${message}` },
     duration: { seconds: (value) => `${value}s`, minutes: (value) => `${value}m`, hours: (value) => `${value}h`, days: (value) => `${value}d` },
   },
   ja: {
     pageTitle: 'ラボサービス状態', homeAria: 'ラボサービス状態のホームへ戻る', title: 'ラボサービス状態', subtitle: 'GPU 計算ノードとサービスの可用性',
-    language: '言語', themeToggle: 'ライト・ダークモードを切り替え', colorTheme: '配色テーマを切り替え', themes: { green: 'エメラルド', ocean: 'オーシャン', violet: 'バイオレット', amber: 'アンバー', anime: '星桜', fighter: '闘魂' }, logout: 'ログアウト', summaryAria: '状態の概要',
+    language: '言語', themeToggle: 'ライト・ダークモードを切り替え', colorTheme: '配色テーマを切り替え', themes: { green: 'エメラルド', ocean: 'オーシャン', violet: 'バイオレット', amber: 'アンバー', anime: '星桜', fighter: '闘魂', qiying: '柒影' }, logout: 'ログアウト', summaryAria: '状態の概要',
     hero: { aria: '星桜ラボテーマのキービジュアル', title: '星桜コンピュート観測室', subtitle: '桜色の朝光の中、すべての計算を見守ります。', badge: 'オリジナルテーマ · ライブ状態' },
     fightHero: { aria: '闘魂ストリートファイトテーマのキービジュアル', title: 'ストリート闘魂観測所', subtitle: 'すべての信号が拳を放ち、すべての計算がリングへ。', badge: 'オリジナル格闘テーマ · ライブ状態' },
+    qiyingHero: { aria: '柒影アサシンテーマのキービジュアル', title: '柒影・刃域観測所', subtitle: '刃が夜を裂き、すべての演算の鼓動を守る。', badge: '柒影テーマ · ライブ状態' },
     refresh: { loading: '状態を取得中', updating: '更新中', countdown: (seconds) => `更新まで ${seconds} 秒`, manualAria: '状態を今すぐ更新してカウントダウンをリセット' },
     summary: { total: '監視ノード', totalHint: 'すべての計算サーバー', online: '正常ノード', onlineHint: 'FRP と Agent に接続可能', offline: '異常ノード', offlineHint: 'タイムアウトまたは切断', availability: '平均稼働率', availabilityHint: '過去 30 日間' },
     node: { averageLatency: '平均応答時間', last24h: '過去 24 時間', availability: '平均稼働時間', cloudHistory: '過去 30 日間', historyAria: '過去三十日間のサービス状態', daysAgo: '30 日前', today: '今日', online: 'オンライン', offline: 'オフライン', checked: (time) => `${time} に確認`, healthy: '正常稼働', unhealthy: '接続異常', failed: '接続失敗', empty: '計算ノードが設定されていません', tooltipAvailability: (value) => `稼働率：${value}` },
@@ -61,8 +66,8 @@ const TRANSLATIONS = {
     ssh: { copyAria: 'SSH 接続コマンドをコピー', copied: 'コピー済み', failed: 'コピー失敗' },
     latency: { title: '応答時間の推移', average: '24 時間平均', openAria: '応答時間の推移を表示', closeAria: '応答時間の推移を閉じる', chartAria: '過去 24 時間の応答時間グラフ', empty: '過去 24 時間の応答時間サンプルはありません' },
     incident: { title: '障害履歴', count: (value) => `${value} 件`, empty: '最近の障害はありません', ongoing: (duration) => `継続中 · ${duration}` },
-    auth: { loginResource: 'ログインして使用状況を表示', viewResource: 'リソース使用状況を表示', secureAccess: '安全なアクセス', title: 'ログインしてリソースを表示', close: 'ログイン画面を閉じる', description: '認証後、設定済み計算サーバーの詳細なリソースとプロセス情報を確認できます。', username: 'ユーザー名', password: 'パスワード', remember: '30 日間ログイン状態を保持', submit: '安全にログイン', submitting: '確認中…', security: 'セッションは HttpOnly Cookie に保存され、ページのスクリプトはパスワードやトークンを読み取れません。', invalid: 'ユーザー名またはパスワードが正しくありません。', locked: (seconds) => `試行回数が多すぎます。${seconds} 秒後に再試行してください。`, failed: 'ログインサービスは一時的に利用できません。' },
-    footer: { description: 'ラボ基盤の状態 · 詳細なリソース情報にはログインが必要です', icp: 'ICP 届出情報の表示欄（審査中）', waiting: '最初の確認を待っています', checked: (time) => `最終確認：${time}` },
+    auth: { loginResource: 'ログインして使用状況を表示', viewResource: 'リソース使用状況を表示', secureAccess: '安全なアクセス', title: 'ユーザーログイン', close: 'ログイン画面を閉じる', description: 'ログインすると、GPU サーバーの詳細なリソースとプロセス情報を確認できます。', username: 'ユーザー名', password: 'パスワード', remember: '30 日間ログイン状態を保持', submit: '安全にログイン', submitting: '確認中…', invalid: 'ユーザー名またはパスワードが正しくありません。', locked: (seconds) => `試行回数が多すぎます。${seconds} 秒後に再試行してください。`, failed: 'ログインサービスは一時的に利用できません。' },
+    footer: { description: 'ラボ基盤の状態 · 詳細なリソース情報にはログインが必要です', waiting: '最初の確認を待っています', checked: (time) => `最終確認：${time}` },
     errors: { load: (message) => `状態データを読み込めません：${message}` },
     duration: { seconds: (value) => `${value} 秒`, minutes: (value) => `${value} 分`, hours: (value) => `${value} 時間`, days: (value) => `${value} 日` },
   },
@@ -72,12 +77,24 @@ const pageState = {
   locale: 'zh',
   resolvedTheme: 'light',
   colorTheme: 'green',
+  activeThemeTransition: null,
+  themeFallbackTimer: null,
   refreshTimeout: null,
   countdownInterval: null,
   nextRefreshAt: 0,
   loading: false,
   authenticated: false,
   pendingDetailUrl: '',
+  pendingDetailFighter: '',
+  pendingDetailNodeId: '',
+  fighterNavigationPending: false,
+  fighterNavigationTimeout: null,
+  qiyingThemeTimeouts: [],
+  qiyingNavigationTimeout: null,
+  qiyingNavigationPending: false,
+  qiyingActiveCard: null,
+  qiyingPreloadedAssets: [],
+  prefetchedDetailUrls: new Set(),
   latestDocument: null,
   suspended: false,
   resourceRequestVersion: 0,
@@ -301,6 +318,7 @@ function createNodeCard(node) {
     if (card.statusNode) openLatencyDialog(card.statusNode);
   });
   card.querySelector('.detail-link').addEventListener('click', handleDetailLinkClick);
+  card.querySelector('.resource-preview').addEventListener('click', handleDetailLinkClick);
   const copyButton = card.querySelector('.copy-ssh-button');
   copyButton.addEventListener('click', () => {
     const currentCommand = pageState.authenticated ? pageState.sshCommands[card.dataset.nodeId] : '';
@@ -308,6 +326,24 @@ function createNodeCard(node) {
   });
   updateNodeCard(card, node);
   return card;
+}
+
+/**
+ * 根据稳定节点标识为三张服务器卡片分配斗魂角色。
+ *
+ * 真实展示名称优先用于识别 5090、4090-1 和 4090-2；若部署方修改了名称，
+ * 则按照卡片顺序依次回退到隆、肯、豪鬼，保证三个角标仍然完整出现。
+ *
+ * @param {object} node - 状态接口返回的节点对象。
+ * @param {number} index - 节点在当前状态文档中的顺序。
+ * @returns {'ryu'|'ken'|'akuma'} 节点对应的斗魂角色代码。
+ */
+function resolveNodeFighter(node, index) {
+  const identity = `${node?.id || ''} ${node?.name || ''}`.toLowerCase().replaceAll(' ', '');
+  if (identity.includes('5090')) return 'ryu';
+  if (identity.includes('4090-1') || identity.includes('4090_1')) return 'ken';
+  if (identity.includes('4090-2') || identity.includes('4090_2') || identity.includes('server-0')) return 'akuma';
+  return FIGHTER_NODE_ORDER[index % FIGHTER_NODE_ORDER.length];
 }
 
 /**
@@ -336,8 +372,18 @@ function updateNodeCard(card, node) {
   card.querySelector('.history-caption').textContent = translate(node.online ? 'node.healthy' : 'node.unhealthy');
   card.querySelector('.ping-interval').textContent = `PING / ${formatProbeInterval(pageState.latestDocument?.check_interval_seconds)}`;
   card.querySelector('.ping-state').textContent = translate(node.online ? 'node.online' : 'node.offline');
-  renderHistory(card.querySelector('.history-bars'), node.history || []);
-  renderIncidents(card.querySelector('.incident-list'), node.incidents || []);
+  const history = node.history || [];
+  const historySignature = JSON.stringify(history);
+  if (card.dataset.historySignature !== historySignature) {
+    renderHistory(card.querySelector('.history-bars'), history);
+    card.dataset.historySignature = historySignature;
+  }
+  const incidents = node.incidents || [];
+  const incidentSignature = JSON.stringify(incidents);
+  if (card.dataset.incidentSignature !== incidentSignature) {
+    renderIncidents(card.querySelector('.incident-list'), incidents);
+    card.dataset.incidentSignature = incidentSignature;
+  }
   card.querySelector('.incident-count').textContent = translate('incident.count', (node.incidents || []).length);
   const detailLink = card.querySelector('.detail-link');
   detailLink.href = node.detail_url || '/monitor/';
@@ -373,11 +419,12 @@ function renderNodes(nodes) {
     [...grid.querySelectorAll('.node-card[data-node-id]')].map((card) => [card.dataset.nodeId, card]),
   );
   const activeNodeIds = new Set();
-  const orderedCards = nodes.map((node) => {
+  const orderedCards = nodes.map((node, index) => {
     const nodeId = String(node.id || '');
     activeNodeIds.add(nodeId);
     const card = existingCards.get(nodeId) || createNodeCard(node);
     if (existingCards.has(nodeId)) updateNodeCard(card, node);
+    card.dataset.fighter = resolveNodeFighter(node, index);
     return card;
   });
   existingCards.forEach((card, nodeId) => {
@@ -388,7 +435,29 @@ function renderNodes(nodes) {
     if (card !== insertionPoint) grid.insertBefore(card, insertionPoint);
     insertionPoint = card.nextElementSibling;
   });
-  if (pageState.authenticated) void loadResourcePreviews();
+  if (pageState.authenticated) {
+    void loadResourcePreviews();
+    prefetchDetailDocuments();
+  }
+}
+
+/**
+ * 登录后在浏览器空闲时预取 GPU 详情文档，降低第一次跳转后的资源加载停顿。
+ *
+ * @returns {void}
+ */
+function prefetchDetailDocuments() {
+  if (!pageState.authenticated) return;
+  document.querySelectorAll('.node-card .resource-preview').forEach((anchor) => {
+    const destination = safeMonitorPath(anchor.getAttribute('href') || '');
+    if (!destination || pageState.prefetchedDetailUrls.has(destination)) return;
+    pageState.prefetchedDetailUrls.add(destination);
+    const prefetch = document.createElement('link');
+    prefetch.rel = 'prefetch';
+    prefetch.as = 'document';
+    prefetch.href = destination;
+    document.head.appendChild(prefetch);
+  });
 }
 
 /**
@@ -565,15 +634,17 @@ function applyTheme(theme, persist = true) {
 /**
  * 应用可跨首页和 GPU 页面共享的强调配色。
  *
- * @param {'green'|'ocean'|'violet'|'amber'|'anime'|'fighter'} theme - 需要启用的配色主题。
+ * @param {'green'|'ocean'|'violet'|'amber'|'anime'|'fighter'|'qiying'} theme - 需要启用的配色主题。
  * @param {boolean} persist - 是否写入共享的 localStorage。
  * @returns {void}
  */
 function applyColorTheme(theme, persist = true) {
-  const normalized = ['green', 'ocean', 'violet', 'amber', 'anime', 'fighter'].includes(theme) ? theme : 'green';
+  const normalized = COLOR_THEMES.includes(theme) ? theme : 'green';
+  if (normalized !== 'fighter') resetFighterTransition();
+  if (normalized !== 'qiying') resetQiyingTransition();
   pageState.colorTheme = normalized;
   document.documentElement.dataset.colorTheme = normalized;
-  document.querySelectorAll('[data-color-theme]').forEach((button) => {
+  document.querySelectorAll('button[data-color-theme]').forEach((button) => {
     const active = button.dataset.colorTheme === normalized;
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-checked', String(active));
@@ -582,12 +653,51 @@ function applyColorTheme(theme, persist = true) {
 }
 
 /**
- * 在浅色与深色主题之间切换。
+ * 在浅色与深色主题之间执行双向圆形揭示切换。
  *
+ * @param {MouseEvent|null} event - 主题按钮点击事件，用于计算圆形动画的起点。
  * @returns {void}
  */
-function toggleTheme() {
-  applyTheme(pageState.resolvedTheme === 'dark' ? 'light' : 'dark');
+function toggleTheme(event = null) {
+  const nextTheme = pageState.resolvedTheme === 'dark' ? 'light' : 'dark';
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const root = document.documentElement;
+  const applyNextTheme = () => applyTheme(nextTheme);
+
+  if (reduceMotion) {
+    applyNextTheme();
+    return;
+  }
+
+  if (typeof document.startViewTransition !== 'function') {
+    if (pageState.themeFallbackTimer !== null) window.clearTimeout(pageState.themeFallbackTimer);
+    root.classList.add('theme-transition-fallback');
+    window.requestAnimationFrame(applyNextTheme);
+    pageState.themeFallbackTimer = window.setTimeout(() => {
+      root.classList.remove('theme-transition-fallback');
+      pageState.themeFallbackTimer = null;
+    }, 480);
+    return;
+  }
+
+  const bounds = event?.currentTarget?.getBoundingClientRect?.();
+  const originX = bounds ? bounds.left + bounds.width / 2 : window.innerWidth - 42;
+  const originY = bounds ? bounds.top + bounds.height / 2 : 42;
+  const radius = Math.hypot(
+    Math.max(originX, window.innerWidth - originX),
+    Math.max(originY, window.innerHeight - originY),
+  );
+  root.style.setProperty('--theme-transition-x', `${originX}px`);
+  root.style.setProperty('--theme-transition-y', `${originY}px`);
+  root.style.setProperty('--theme-transition-radius', `${radius}px`);
+  pageState.activeThemeTransition?.skipTransition?.();
+  const transition = document.startViewTransition(applyNextTheme);
+  pageState.activeThemeTransition = transition;
+  transition.finished
+    .catch(() => {})
+    .finally(() => {
+      if (pageState.activeThemeTransition === transition) pageState.activeThemeTransition = null;
+    });
 }
 
 /**
@@ -781,8 +891,11 @@ function normalizeUsage(value) {
  */
 function renderResourceMetric(card, metric, value) {
   const usage = normalizeUsage(value);
-  card.querySelector(`.resource-${metric}`).textContent = usage.label;
-  card.querySelector(`.resource-${metric}-meter`).style.width = `${usage.numberValue ?? 0}%`;
+  const valueElement = card.querySelector(`.resource-${metric}`);
+  const meter = card.querySelector(`.resource-${metric}-meter`);
+  const meterWidth = `${usage.numberValue ?? 0}%`;
+  if (valueElement.textContent !== usage.label) valueElement.textContent = usage.label;
+  if (meter.style.width !== meterWidth) meter.style.width = meterWidth;
 }
 
 /**
@@ -924,6 +1037,7 @@ function applyAuthenticationState(authenticated) {
   if (authenticated) {
     void loadResourcePreviews();
     void loadSshCommands();
+    prefetchDetailDocuments();
   }
 }
 
@@ -955,16 +1069,346 @@ function openLoginDialog() {
 }
 
 /**
+ * 清除一次斗魂详情转场留下的动画状态，兼容浏览器后退缓存恢复。
+ *
+ * @returns {void}
+ */
+function resetFighterTransition() {
+  if (pageState.fighterNavigationTimeout !== null) {
+    window.clearTimeout(pageState.fighterNavigationTimeout);
+    pageState.fighterNavigationTimeout = null;
+  }
+  const stage = document.querySelector('#fighter-duel-effects');
+  stage?.classList.remove('is-attacking');
+  stage?.removeAttribute('data-attacker');
+  document.body.classList.remove('fighter-transitioning');
+  document.body.removeAttribute('data-fighter-attacker');
+  pageState.fighterNavigationPending = false;
+}
+
+/**
+ * 创建一份只用于转场显示的安全视觉副本，并移除可能冲突的标识与交互能力。
+ *
+ * @param {HTMLElement} source - 需要复制当前视觉状态的页面或卡片元素。
+ * @param {string} className - 添加到副本根节点的转场样式类。
+ * @returns {HTMLElement} 已移除重复 ID 和交互能力的视觉副本。
+ */
+function createQiyingVisualClone(source, className) {
+  const clone = source.cloneNode(true);
+  clone.classList.add(className);
+  clone.removeAttribute('id');
+  clone.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+  clone.querySelectorAll('script, dialog').forEach((element) => element.remove());
+  clone.querySelectorAll('a, button, input, select, textarea, summary').forEach((element) => {
+    element.setAttribute('tabindex', '-1');
+    element.setAttribute('aria-hidden', 'true');
+  });
+  return clone;
+}
+
+/**
+ * 提前下载并解码柒影主视觉与挥斩素材，避免第一次转场触发图片解码卡顿。
+ *
+ * @returns {Promise<void>} 两张主题图片完成解码或确认无法解码时兑现。
+ */
+async function preloadQiyingAssets() {
+  if (pageState.qiyingPreloadedAssets.length) return;
+  const paths = [
+    '/status-assets/assets/qiying-idle-v1.jpg',
+    '/status-assets/assets/qiying-slash-v1.jpg',
+  ];
+  const images = paths.map((path) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.src = path;
+    return image;
+  });
+  pageState.qiyingPreloadedAssets = images;
+  await Promise.allSettled(images.map((image) => image.decode()));
+}
+
+/**
+ * 隐藏页面快照中完全位于当前视口外的重型区块，减少转场期间的绘制量。
+ *
+ * 元素仍保留在文档流中，因此当前页面的几何位置不会变化；浏览器只需绘制
+ * 用户真正能看到的顶部、摘要或节点卡片。
+ *
+ * @param {HTMLElement} source - 当前页面的真实根元素。
+ * @param {HTMLElement} clone - 即将放入斩击层的视觉副本。
+ * @returns {void}
+ */
+function suppressOffscreenQiyingSnapshot(source, clone) {
+  const selectors = [
+    '.topbar', '.hoshizakura-hero', '.toushin-hero', '.qiying-hero',
+    '.summary-card', '.node-card', 'footer',
+  ];
+  selectors.forEach((selector) => {
+    const sourceElements = [...source.querySelectorAll(selector)];
+    const cloneElements = [...clone.querySelectorAll(selector)];
+    sourceElements.forEach((element, index) => {
+      const rectangle = element.getBoundingClientRect();
+      if (rectangle.bottom < -80 || rectangle.top > window.innerHeight + 80) {
+        const cloneElement = cloneElements[index];
+        if (cloneElement) cloneElement.style.visibility = 'hidden';
+      }
+    });
+  });
+}
+
+/**
+ * 把当前可视页面复制进斩击层的两块裂片，并同步页面背景与滚动偏移。
+ *
+ * @param {HTMLElement} stage - 柒影全屏转场容器。
+ * @returns {boolean} 成功准备两块页面快照时返回 true。
+ */
+function prepareQiyingPageFragments(stage) {
+  const source = document.querySelector('.page-shell');
+  const fragments = [...stage.querySelectorAll('.qiying-page-fragment')];
+  const contents = [...stage.querySelectorAll('.qiying-page-fragment-content')];
+  if (!source || fragments.length !== 2 || contents.length !== 2) return false;
+  const bodyStyle = window.getComputedStyle(document.body);
+  fragments.forEach((fragment) => {
+    fragment.style.setProperty('--snapshot-background-color', bodyStyle.backgroundColor);
+    fragment.style.setProperty('--snapshot-background-image', bodyStyle.backgroundImage);
+    fragment.style.setProperty('--snapshot-background-position', bodyStyle.backgroundPosition);
+    fragment.style.setProperty('--snapshot-background-repeat', bodyStyle.backgroundRepeat);
+    fragment.style.setProperty('--snapshot-background-size', bodyStyle.backgroundSize);
+  });
+  contents.forEach((content) => {
+    content.style.setProperty('--snapshot-offset-y', `${-window.scrollY}px`);
+    const snapshot = createQiyingVisualClone(source, 'qiying-page-snapshot');
+    suppressOffscreenQiyingSnapshot(source, snapshot);
+    content.replaceChildren(snapshot);
+  });
+  return true;
+}
+
+/**
+ * 根据卡片实际矩形创建两块完全重合的断面，并计算刀光与裂缝共用的斜线。
+ *
+ * @param {HTMLElement} stage - 柒影转场容器。
+ * @param {HTMLElement|null} card - 用户准备进入详情的服务器卡片。
+ * @returns {boolean} 卡片位于可视区域且转场断面准备成功时返回 true。
+ */
+function prepareQiyingCardCut(stage, card) {
+  if (!card) return false;
+  const rectangle = card.getBoundingClientRect();
+  const cut = stage.querySelector('#qiying-card-cut');
+  const contents = [...stage.querySelectorAll('.qiying-card-slice-content')];
+  if (!cut || contents.length !== 2 || rectangle.width < 1 || rectangle.height < 1) return false;
+  const slashDeltaX = rectangle.width * .72;
+  const slashLength = Math.hypot(slashDeltaX, rectangle.height);
+  const slashAngle = Math.atan2(rectangle.height, slashDeltaX);
+  cut.style.setProperty('--card-top', `${rectangle.top}px`);
+  cut.style.setProperty('--card-left', `${rectangle.left}px`);
+  cut.style.setProperty('--card-width', `${rectangle.width}px`);
+  cut.style.setProperty('--card-height', `${rectangle.height}px`);
+  cut.style.setProperty('--card-slash-length', `${slashLength}px`);
+  cut.style.setProperty('--card-slash-angle', `${slashAngle}rad`);
+  const firstClone = createQiyingVisualClone(card, 'qiying-card-snapshot');
+  firstClone.classList.remove('is-qiying-source-hidden');
+  const secondClone = firstClone.cloneNode(true);
+  contents[0].replaceChildren(firstClone);
+  contents[1].replaceChildren(secondClone);
+  card.classList.add('is-qiying-source-hidden');
+  return true;
+}
+
+/**
+ * 清空转场使用的页面与卡片副本，避免隐藏副本保留重复内容或旧尺寸。
+ *
+ * @param {HTMLElement|null} stage - 柒影转场容器。
+ * @returns {void}
+ */
+function clearQiyingVisualClones(stage) {
+  if (!stage) return;
+  stage.querySelectorAll('.qiying-page-fragment-content, .qiying-card-slice-content').forEach((content) => content.replaceChildren());
+  stage.querySelectorAll('.qiying-page-fragment').forEach((fragment) => fragment.removeAttribute('style'));
+  stage.querySelector('#qiying-card-cut')?.removeAttribute('style');
+}
+
+/**
+ * 清除柒影主题切换或详情跳转留下的计时器与动画类。
+ *
+ * @returns {void}
+ */
+function resetQiyingTransition() {
+  pageState.qiyingThemeTimeouts.forEach((timeout) => window.clearTimeout(timeout));
+  pageState.qiyingThemeTimeouts = [];
+  if (pageState.qiyingNavigationTimeout !== null) {
+    window.clearTimeout(pageState.qiyingNavigationTimeout);
+    pageState.qiyingNavigationTimeout = null;
+  }
+  const stage = document.querySelector('#qiying-transition');
+  stage?.classList.remove('is-active', 'is-revealing', 'is-theme-applied', 'is-detail');
+  clearQiyingVisualClones(stage);
+  pageState.qiyingActiveCard?.classList.remove('is-qiying-striking', 'is-qiying-source-hidden');
+  pageState.qiyingActiveCard = null;
+  pageState.qiyingNavigationPending = false;
+  document.body.classList.remove('qiying-theme-transitioning', 'qiying-detail-transitioning');
+}
+
+/**
+ * 仅在用户主动选择柒影主题时播放斩击、刀痕和撕裂揭幕动画。
+ *
+ * @returns {void}
+ */
+function playQiyingThemeTransition() {
+  const stage = document.querySelector('#qiying-transition');
+  if (!stage) {
+    applyColorTheme('qiying');
+    return;
+  }
+  resetQiyingTransition();
+  if (!prepareQiyingPageFragments(stage)) {
+    applyColorTheme('qiying');
+    return;
+  }
+  document.body.classList.add('qiying-theme-transitioning');
+  stage.classList.add('is-active');
+  void stage.offsetWidth;
+  pageState.qiyingThemeTimeouts.push(window.setTimeout(() => {
+    stage.classList.add('is-revealing');
+  }, 150));
+  pageState.qiyingThemeTimeouts.push(window.setTimeout(() => {
+    stage.classList.add('is-theme-applied');
+    applyColorTheme('qiying');
+  }, 380));
+  pageState.qiyingThemeTimeouts.push(window.setTimeout(() => {
+    resetQiyingTransition();
+  }, 960));
+}
+
+/**
+ * 处理配色按钮点击，并把柒影的显式切换与普通即时切换区分开。
+ *
+ * @param {string} theme - 用户选择的配色主题代码。
+ * @returns {void}
+ */
+function requestColorTheme(theme) {
+  const normalized = COLOR_THEMES.includes(theme) ? theme : 'green';
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (normalized === 'qiying' && pageState.colorTheme !== 'qiying' && !reducedMotion) {
+    void preloadQiyingAssets();
+    playQiyingThemeTransition();
+    return;
+  }
+  applyColorTheme(normalized);
+}
+
+/**
+ * 在柒影主题下让当前卡片释放一道短促刀痕后进入监控详情。
+ *
+ * @param {string} destination - 已通过同源路径校验的详情地址。
+ * @param {HTMLElement|null} card - 触发跳转的服务器卡片。
+ * @returns {void}
+ */
+function navigateWithQiyingTransition(destination, card) {
+  const safeDestination = safeMonitorPath(destination) || '/monitor/';
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion) {
+    window.location.assign(safeDestination);
+    return;
+  }
+  if (pageState.qiyingNavigationPending) return;
+  const stage = document.querySelector('#qiying-transition');
+  if (!stage) {
+    window.location.assign(safeDestination);
+    return;
+  }
+  resetQiyingTransition();
+  pageState.qiyingNavigationPending = true;
+  pageState.qiyingActiveCard = card;
+  card?.classList.add('is-qiying-striking');
+  if (!prepareQiyingCardCut(stage, card)) {
+    resetQiyingTransition();
+    window.location.assign(safeDestination);
+    return;
+  }
+  document.body.classList.add('qiying-detail-transitioning');
+  stage.classList.add('is-detail');
+  void stage.offsetWidth;
+  pageState.qiyingNavigationTimeout = window.setTimeout(() => {
+    pageState.qiyingNavigationTimeout = null;
+    window.location.assign(safeDestination);
+  }, 860);
+}
+
+/**
+ * 按当前定制主题选择详情页转场；普通主题直接进入详情。
+ *
+ * @param {string} destination - 已通过同源路径校验的详情地址。
+ * @param {string} fighter - 斗魂主题中的角色代码。
+ * @param {HTMLElement|null} card - 触发跳转的服务器卡片。
+ * @returns {void}
+ */
+function navigateWithColorThemeTransition(destination, fighter, card) {
+  if (pageState.colorTheme === 'fighter') {
+    navigateWithFighterTransition(destination, fighter);
+    return;
+  }
+  if (pageState.colorTheme === 'qiying') {
+    navigateWithQiyingTransition(destination, card);
+    return;
+  }
+  window.location.assign(safeMonitorPath(destination) || '/monitor/');
+}
+
+/**
+ * 在斗魂主题下播放指定角色发波动画，然后进入安全的监控详情地址。
+ *
+ * @param {string} destination - 已通过同源路径校验的详情地址。
+ * @param {string} fighter - 隆、肯或豪鬼对应的角色代码。
+ * @returns {void}
+ */
+function navigateWithFighterTransition(destination, fighter) {
+  const safeDestination = safeMonitorPath(destination) || '/monitor/';
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (pageState.colorTheme !== 'fighter' || !FIGHTER_NODE_ORDER.includes(fighter) || reducedMotion) {
+    window.location.assign(safeDestination);
+    return;
+  }
+  if (pageState.fighterNavigationPending) return;
+  const stage = document.querySelector('#fighter-duel-effects');
+  if (!stage) {
+    window.location.assign(safeDestination);
+    return;
+  }
+  pageState.fighterNavigationPending = true;
+  stage.dataset.attacker = fighter;
+  document.body.dataset.fighterAttacker = fighter;
+  document.body.classList.add('fighter-transitioning');
+  stage.classList.remove('is-attacking');
+  void stage.offsetWidth;
+  stage.classList.add('is-attacking');
+  pageState.fighterNavigationTimeout = window.setTimeout(() => {
+    pageState.fighterNavigationTimeout = null;
+    window.location.assign(safeDestination);
+  }, 900);
+}
+
+/**
  * 在节点资源链接点击时决定直接跳转还是要求登录。
  *
  * @param {MouseEvent} event - 资源按钮点击事件。
  * @returns {void}
  */
 function handleDetailLinkClick(event) {
-  if (pageState.authenticated) return;
-  event.preventDefault();
-  pageState.pendingDetailUrl = safeMonitorPath(event.currentTarget.href) || '/monitor/';
-  openLoginDialog();
+  const destination = safeMonitorPath(event.currentTarget.href) || '/monitor/';
+  const card = event.currentTarget.closest('.node-card');
+  const fighter = card?.dataset.fighter || '';
+  if (!pageState.authenticated) {
+    event.preventDefault();
+    pageState.pendingDetailUrl = destination;
+    pageState.pendingDetailFighter = fighter;
+    pageState.pendingDetailNodeId = card?.dataset.nodeId || '';
+    openLoginDialog();
+    return;
+  }
+  if (pageState.colorTheme === 'fighter' || pageState.colorTheme === 'qiying') {
+    event.preventDefault();
+    navigateWithColorThemeTransition(destination, fighter, card);
+  }
 }
 
 /**
@@ -998,7 +1442,10 @@ async function submitLogin(event) {
     applyAuthenticationState(true);
     document.querySelector('#login-dialog').close();
     const destination = safeMonitorPath(pageState.pendingDetailUrl) || '/monitor/';
-    window.location.assign(destination);
+    const pendingCard = Array.from(document.querySelectorAll('.node-card')).find(
+      (card) => card.dataset.nodeId === pageState.pendingDetailNodeId,
+    ) || null;
+    navigateWithColorThemeTransition(destination, pageState.pendingDetailFighter, pendingCard);
   } catch (error) {
     message.textContent = error.message || translate('auth.failed');
     message.hidden = false;
@@ -1034,10 +1481,13 @@ async function initializePage() {
   applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY) || 'green', false);
   applyLocale(localStorage.getItem(LOCALE_STORAGE_KEY) || defaultLocale, false);
   document.querySelectorAll('[data-locale]').forEach((button) => button.addEventListener('click', () => applyLocale(button.dataset.locale)));
-  document.querySelectorAll('[data-color-theme]').forEach((button) => button.addEventListener('click', () => {
-    applyColorTheme(button.dataset.colorTheme);
+  document.querySelectorAll('button[data-color-theme]').forEach((button) => button.addEventListener('click', () => {
     document.querySelector('#color-theme-picker').open = false;
+    requestColorTheme(button.dataset.colorTheme);
   }));
+  const qiyingThemeButton = document.querySelector('button[data-color-theme="qiying"]');
+  qiyingThemeButton?.addEventListener('pointerenter', () => void preloadQiyingAssets(), { once: true });
+  qiyingThemeButton?.addEventListener('focus', () => void preloadQiyingAssets(), { once: true });
   document.querySelector('#refresh-button').addEventListener('click', refreshNow);
   document.querySelector('#theme-button').addEventListener('click', toggleTheme);
   document.querySelector('#logout-button').addEventListener('click', () => void logout());
@@ -1071,6 +1521,8 @@ async function initializePage() {
   });
   startCountdownInterval();
   await Promise.all([loadStatus(), loadSession()]);
+  const scheduleAssetWarmup = window.requestIdleCallback || ((callback) => window.setTimeout(callback, 800));
+  scheduleAssetWarmup(() => void preloadQiyingAssets());
   const parameters = new URLSearchParams(window.location.search);
   const requestedNext = safeMonitorPath(parameters.get('next') || '');
   if (parameters.get('login') === '1') {
@@ -1079,6 +1531,8 @@ async function initializePage() {
     else openLoginDialog();
   }
   window.addEventListener('pageshow', () => {
+    resetFighterTransition();
+    resetQiyingTransition();
     applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'auto', false);
     applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY) || 'green', false);
     applyLocale(localStorage.getItem(LOCALE_STORAGE_KEY) || defaultLocale, false);

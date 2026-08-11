@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png" />
   <link rel="stylesheet" href="vendor/element-plus.css" />
-  <link rel="stylesheet" href="style.css?v=20260810-4" />
+  <link rel="stylesheet" href="style.css?v=20260811-4" />
   <script src="vendor/vue.runtime.global.prod.js?v=3.5.39"></script>
   <script src="vendor/element-plus.js"></script>
   <script src="vendor/element-plus-icons.js"></script>
@@ -276,7 +276,21 @@
       </template>
 
       <section v-else-if="loading || configLoading" class="loading-layout" aria-label="Loading">
-        <el-skeleton animated><template #template><div class="skeleton-grid"><el-skeleton-item v-for="n in 6" :key="n" variant="rect" class="skeleton-card" /></div><el-skeleton-item variant="rect" class="skeleton-panel" /></template></el-skeleton>
+        <el-skeleton animated>
+          <template #template>
+            <div class="skeleton-dashboard-section skeleton-split-layout">
+              <el-skeleton-item variant="rect" class="skeleton-content-panel" />
+              <el-skeleton-item variant="rect" class="skeleton-content-panel" />
+            </div>
+            <div class="skeleton-dashboard-section">
+              <el-skeleton-item variant="rect" class="skeleton-process-panel" />
+            </div>
+            <div class="skeleton-dashboard-section">
+              <div class="skeleton-section-heading"><el-skeleton-item variant="text" /><el-skeleton-item variant="text" /></div>
+              <el-skeleton-item variant="rect" class="skeleton-gpu-panel" />
+            </div>
+          </template>
+        </el-skeleton>
       </section>
 
       <section v-else-if="nodeError" class="state-panel state-panel--blocking">
@@ -284,9 +298,9 @@
       </section>
     </main>
 
-    <footer class="footer-copyright"><p>{{ translate('footer.line1') }}</p><p class="icp-placeholder">{{ translate('footer.icpPending') }}</p></footer>
+    <footer class="footer-copyright"><p>{{ translate('footer.line1') }}</p></footer>
   </div>
-  <script src="app.render.js?v=20260716-3"></script>
-  <script src="app.js?v=20260811-1"></script>
+  <script src="app.render.js?v=20260811-4"></script>
+  <script src="app.js?v=20260811-3"></script>
 </body>
 </html>

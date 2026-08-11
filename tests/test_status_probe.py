@@ -278,6 +278,115 @@ class StatusProbeTests(unittest.TestCase):
             "node_frpc_session_failure",
         )
 
+    def test_incident_annotation_survives_newer_diagnostic_incident(self) -> None:
+        """验证出现新故障后，旧故障的精细原因仍从数据库恢复。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        incident_started_at = int(datetime.now().timestamp()) - 120
+        with tempfile.TemporaryDirectory() as directory:
+            connection = status_probe.open_database(
+                str(Path(directory) / "status.db")
+            )
+            original = {
+                "node": [
+                    {
+                        "started_at": incident_started_at,
+                        "ended_at": incident_started_at + 60,
+                        "duration_seconds": 120,
+                        "reason": "学校与 VPS 之间的跨网路由异常",
+                        "raw_reason": "连接被拒绝",
+                        "diagnostic_classification": (
+                            "school_vps_inter_network_route"
+                        ),
+                    }
+                ]
+            }
+            status_probe.store_incident_annotations(connection, original, 30)
+            rebuilt = [
+                {
+                    "started_at": incident_started_at,
+                    "ended_at": incident_started_at + 60,
+                    "duration_seconds": 120,
+                    "reason": "连接被拒绝",
+                }
+            ]
+
+            restored = status_probe.apply_incident_annotations(
+                connection,
+                "node",
+                rebuilt,
+            )
+            connection.close()
+
+        self.assertEqual(
+            restored[0]["reason"],
+            "学校与 VPS 之间的跨网路由异常",
+        )
+        self.assertEqual(
+            restored[0]["diagnostic_classification"],
+            "school_vps_inter_network_route",
+        )
+
+    def test_simultaneous_node_incidents_share_one_public_reason(self) -> None:
+        """验证同一时刻多节点中断不会显示互相矛盾的原因。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        incidents_by_node = {
+            "node-a": [
+                {
+                    "started_at": 5_000,
+                    "ended_at": 5_060,
+                    "duration_seconds": 60,
+                    "reason": "节点 FRP 控制会话异常",
+                    "diagnostic_classification": "node_frpc_session_failure",
+                }
+            ],
+            "node-b": [
+                {
+                    "started_at": 5_000,
+                    "ended_at": 5_060,
+                    "duration_seconds": 60,
+                    "reason": "FRP 服务端口或端口策略异常",
+                    "diagnostic_classification": "frp_port_or_policy",
+                }
+            ],
+            "node-c": [
+                {
+                    "started_at": 5_060,
+                    "ended_at": 5_120,
+                    "duration_seconds": 60,
+                    "reason": "FRP 服务端口或端口策略异常",
+                    "diagnostic_classification": "frp_port_or_policy",
+                }
+            ],
+        }
+
+        correlated = status_probe.correlate_incident_reasons(incidents_by_node)
+
+        reasons = {
+            incidents[0]["reason"] for incidents in correlated.values()
+        }
+        classifications = {
+            incidents[0]["diagnostic_classification"]
+            for incidents in correlated.values()
+        }
+        self.assertEqual(reasons, {"学校侧公共网络短时中断"})
+        self.assertEqual(classifications, {"school_shared_network_disruption"})
+        self.assertEqual(
+            correlated["node-a"][0]["correlated_nodes"],
+            ["node-a", "node-b", "node-c"],
+        )
+
     def test_latency_profile_is_weighted_and_bucketed(self) -> None:
         """验证响应时间平均值按原始样本加权且趋势按时间桶压缩。
 

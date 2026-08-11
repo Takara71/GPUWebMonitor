@@ -1,29 +1,29 @@
 {
   "servers": [
     {
-      "id": "server1",
-      "name": "Yang-5090D服务器",
-      "url": "http://192.168.30.107:15896"	  
+      "id": "node-a",
+      "name": "GPU 节点 A",
+      "url": "http://192.168.1.101:15896"
     },
     {
-      "id": "server2",
-      "name": "Yang-4090服务器",
-      "url": "http://192.168.30.16:15896"
+      "id": "node-b",
+      "name": "GPU 节点 B",
+      "url": "http://192.168.1.102:15896"
     },
     {
-      "id": "server3",
-      "name": "4090D服务器",
-      "url": "http://192.168.30.223:15896"
+      "id": "node-c",
+      "name": "GPU 节点 C",
+      "url": "http://192.168.1.103:15896"
     },
     {
-      "id": "server4",
-      "name": "5090D服务器",
-      "url": "http://192.168.30.192:15896"
+      "id": "node-d",
+      "name": "GPU 节点 D",
+      "url": "http://192.168.1.104:15896"
     },
     {
-      "id": "server5",
-      "name": "3060Ti服务器",
-      "url": "http://192.168.30.161:15896"
+      "id": "node-e",
+      "name": "GPU 节点 E",
+      "url": "http://192.168.1.105:15896"
     }
   ]
 }

@@ -279,6 +279,27 @@ def open_database(database_path: str) -> sqlite3.Connection:
     connection.execute(
         "CREATE INDEX IF NOT EXISTS idx_checks_time ON checks (checked_at)"
     )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS incident_annotations (
+            node_id TEXT NOT NULL,
+            started_at INTEGER NOT NULL,
+            ended_at INTEGER,
+            reason TEXT NOT NULL,
+            classification TEXT NOT NULL,
+            scope TEXT NOT NULL DEFAULT 'node',
+            correlated_node_ids TEXT,
+            updated_at INTEGER NOT NULL,
+            PRIMARY KEY (node_id, started_at)
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_incident_annotations_time
+        ON incident_annotations (started_at)
+        """
+    )
     connection.commit()
     return connection
 
@@ -524,8 +545,10 @@ DIAGNOSTIC_REASON_LABELS = {
     "node_frpc_service_failure": "节点 FRP 客户端服务异常",
     "node_frpc_session_failure": "节点 FRP 控制会话异常",
     "school_local_network_or_gateway": "学校本地网络或默认网关异常",
+    "school_shared_network_disruption": "学校侧公共网络短时中断",
     "school_outbound_or_isp": "学校公网出口或运营商异常",
     "frp_port_or_policy": "FRP 服务端口或端口策略异常",
+    "frp_control_plane_degraded": "FRP 服务端控制链路异常",
     "school_vps_inter_network_route": "学校与 VPS 之间的跨网路由异常",
     "frp_link_unavailable": "FRP 公网链路异常",
     "vps_frps_service_failure": "VPS 的 FRP 服务异常",
@@ -616,8 +639,11 @@ def enrich_incidents(
     enriched: list[dict[str, Any]] = []
     for incident in incidents:
         item = dict(incident)
-        candidates = [server_incident, node_incident]
-        for candidate in candidates:
+        candidates = [
+            ("server", server_incident),
+            ("node", node_incident),
+        ]
+        for source, candidate in candidates:
             if not isinstance(candidate, dict):
                 continue
             if not _incident_matches_diagnostic(item, candidate):
@@ -629,9 +655,265 @@ def enrich_incidents(
             item["raw_reason"] = item.get("reason")
             item["reason"] = reason
             item["diagnostic_classification"] = classification
+            item["diagnostic_source"] = source
             break
         enriched.append(item)
     return enriched
+
+
+COMMON_INCIDENT_CLASSIFICATION_PRIORITY = {
+    "vps_frps_service_failure": 100,
+    "vps_frps_port_unavailable": 95,
+    "vps_upstream_network": 90,
+    "frp_port_or_policy": 80,
+    "frp_control_plane_degraded": 80,
+    "frp_link_unavailable": 70,
+    "school_vps_inter_network_route": 60,
+    "school_outbound_or_isp": 50,
+    "school_shared_network_disruption": 50,
+}
+
+
+def apply_incident_annotations(
+    connection: sqlite3.Connection,
+    node_id: str,
+    incidents: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """恢复数据库中已经确认过的故障归因，避免旧记录退化为 TCP 错误。
+
+    本轮诊断结果优先于历史注释；只有当前故障尚未获得精细分类时，才使用
+    相同节点和开始时间对应的持久化结果。
+
+    Args:
+        connection: 状态历史数据库连接。
+        node_id: 故障记录所属节点 ID。
+        incidents: 已由当前诊断状态增强的近期故障记录。
+
+    Returns:
+        恢复历史精细原因后的新故障记录列表。
+    """
+    restored: list[dict[str, Any]] = []
+    for incident in incidents:
+        item = dict(incident)
+        if item.get("diagnostic_classification"):
+            restored.append(item)
+            continue
+        try:
+            started_at = int(item["started_at"])
+        except (KeyError, TypeError, ValueError):
+            restored.append(item)
+            continue
+        row = connection.execute(
+            """
+            SELECT reason, classification, scope, correlated_node_ids
+            FROM incident_annotations
+            WHERE node_id = ? AND started_at = ?
+            """,
+            (node_id, started_at),
+        ).fetchone()
+        if row is None:
+            restored.append(item)
+            continue
+        item["raw_reason"] = item.get("reason")
+        item["reason"] = str(row["reason"])
+        item["diagnostic_classification"] = str(row["classification"])
+        item["diagnostic_scope"] = str(row["scope"])
+        try:
+            correlated_nodes = json.loads(row["correlated_node_ids"] or "[]")
+        except (json.JSONDecodeError, TypeError):
+            correlated_nodes = []
+        if isinstance(correlated_nodes, list) and correlated_nodes:
+            item["correlated_nodes"] = [str(value) for value in correlated_nodes]
+        restored.append(item)
+    return restored
+
+
+def _incidents_are_simultaneous(
+    first: dict[str, Any],
+    second: dict[str, Any],
+    tolerance_seconds: int,
+) -> bool:
+    """判断两个节点故障是否在同一采样窗口内开始且时间区间重叠。
+
+    Args:
+        first: 第一条节点故障记录。
+        second: 第二条节点故障记录。
+        tolerance_seconds: 允许的开始时间偏差秒数。
+
+    Returns:
+        两次故障可以视为同一公共事件时返回 ``True``。
+    """
+    try:
+        first_start = int(first["started_at"])
+        second_start = int(second["started_at"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    if abs(first_start - second_start) > max(tolerance_seconds, 0):
+        return False
+    now_timestamp = int(time.time())
+    first_end = int(first.get("ended_at") or now_timestamp)
+    second_end = int(second.get("ended_at") or now_timestamp)
+    return first_start <= second_end and second_start <= first_end
+
+
+def _select_shared_classification(
+    group: Sequence[tuple[str, dict[str, Any]]],
+) -> str:
+    """从同一公共故障的多节点证据中选择统一且可解释的分类。
+
+    节点自身的 FRP 会话异常不能单独解释多节点同时断开，因此优先采用能够
+    解释公共中断的服务端、端口、跨网路由或运营商分类。若只有节点级判断，
+    则保守归类为 FRP 公网链路异常，避免给出互相矛盾的结论。
+
+    Args:
+        group: 由节点 ID 与故障记录组成的公共事件组。
+
+    Returns:
+        适用于整个事件组的统一诊断分类。
+    """
+    server_counts: dict[str, int] = {}
+    for _, incident in group:
+        classification = str(incident.get("diagnostic_classification") or "")
+        if (
+            incident.get("diagnostic_source") == "server"
+            and classification.startswith("vps_")
+        ):
+            server_counts[classification] = server_counts.get(classification, 0) + 1
+    if not server_counts:
+        return "school_shared_network_disruption"
+    return max(
+        server_counts,
+        key=lambda value: (
+            server_counts[value],
+            COMMON_INCIDENT_CLASSIFICATION_PRIORITY[value],
+        ),
+    )
+
+
+def correlate_incident_reasons(
+    incidents_by_node: dict[str, list[dict[str, Any]]],
+    tolerance_seconds: int = 90,
+) -> dict[str, list[dict[str, Any]]]:
+    """关联同一时段的多节点中断，并为公共事件统一故障原因。
+
+    Args:
+        incidents_by_node: 按节点 ID 索引的近期故障记录。
+        tolerance_seconds: 不同节点采样时间允许的最大偏差。
+
+    Returns:
+        保留原有顺序、但公共事件原因已经统一的新字典。
+    """
+    correlated = {
+        node_id: [dict(incident) for incident in incidents]
+        for node_id, incidents in incidents_by_node.items()
+    }
+    entries = [
+        (node_id, incident)
+        for node_id, incidents in correlated.items()
+        for incident in incidents
+    ]
+    entries.sort(key=lambda value: int(value[1].get("started_at") or 0))
+    consumed: set[tuple[str, int]] = set()
+    for node_id, incident in entries:
+        try:
+            started_at = int(incident["started_at"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        identity = (node_id, started_at)
+        if identity in consumed:
+            continue
+        group = [
+            (candidate_node_id, candidate)
+            for candidate_node_id, candidate in entries
+            if candidate_node_id != node_id
+            and _incidents_are_simultaneous(
+                incident,
+                candidate,
+                tolerance_seconds,
+            )
+        ]
+        group.append((node_id, incident))
+        unique_node_ids = sorted({candidate_node_id for candidate_node_id, _ in group})
+        if len(unique_node_ids) < 2:
+            continue
+        classification = _select_shared_classification(group)
+        reason = DIAGNOSTIC_REASON_LABELS[classification]
+        for candidate_node_id, candidate in group:
+            candidate_start = int(candidate.get("started_at") or 0)
+            consumed.add((candidate_node_id, candidate_start))
+            candidate.setdefault("raw_reason", candidate.get("reason"))
+            candidate["reason"] = reason
+            candidate["diagnostic_classification"] = classification
+            candidate["diagnostic_scope"] = "shared"
+            candidate["correlated_nodes"] = unique_node_ids
+    return correlated
+
+
+def store_incident_annotations(
+    connection: sqlite3.Connection,
+    incidents_by_node: dict[str, list[dict[str, Any]]],
+    retention_days: int,
+) -> None:
+    """持久化已确认的精细故障原因，并清理保留期外的注释。
+
+    Args:
+        connection: 状态历史数据库连接。
+        incidents_by_node: 按节点 ID 索引的已增强故障记录。
+        retention_days: 注释与状态样本共同使用的保留天数。
+
+    Returns:
+        无返回值。
+    """
+    updated_at = int(time.time())
+    rows: list[dict[str, Any]] = []
+    for node_id, incidents in incidents_by_node.items():
+        for incident in incidents:
+            classification = str(incident.get("diagnostic_classification") or "")
+            reason = str(incident.get("reason") or "")
+            if not classification or not reason:
+                continue
+            rows.append(
+                {
+                    "node_id": node_id,
+                    "started_at": int(incident["started_at"]),
+                    "ended_at": incident.get("ended_at"),
+                    "reason": reason,
+                    "classification": classification,
+                    "scope": str(incident.get("diagnostic_scope") or "node"),
+                    "correlated_node_ids": json.dumps(
+                        incident.get("correlated_nodes") or [],
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
+                    "updated_at": updated_at,
+                }
+            )
+    if rows:
+        connection.executemany(
+            """
+            INSERT INTO incident_annotations (
+                node_id, started_at, ended_at, reason, classification,
+                scope, correlated_node_ids, updated_at
+            ) VALUES (
+                :node_id, :started_at, :ended_at, :reason, :classification,
+                :scope, :correlated_node_ids, :updated_at
+            )
+            ON CONFLICT(node_id, started_at) DO UPDATE SET
+                ended_at = excluded.ended_at,
+                reason = excluded.reason,
+                classification = excluded.classification,
+                scope = excluded.scope,
+                correlated_node_ids = excluded.correlated_node_ids,
+                updated_at = excluded.updated_at
+            """,
+            rows,
+        )
+    cutoff = updated_at - max(retention_days, 1) * 86400
+    connection.execute(
+        "DELETE FROM incident_annotations WHERE started_at < ?",
+        (cutoff,),
+    )
+    connection.commit()
 
 
 def build_status_document(
@@ -667,6 +949,21 @@ def build_status_document(
     node_documents: list[dict[str, Any]] = []
     availability_values: list[float] = []
 
+    incidents_by_node: dict[str, list[dict[str, Any]]] = {}
+    for node in nodes:
+        incidents = enrich_incidents(
+            build_incidents(connection, node.node_id, since_retention),
+            node_diagnostics.get(node.node_id),
+            server_diagnostic,
+        )
+        incidents_by_node[node.node_id] = apply_incident_annotations(
+            connection,
+            node.node_id,
+            incidents,
+        )
+    incidents_by_node = correlate_incident_reasons(incidents_by_node)
+    store_incident_annotations(connection, incidents_by_node, retention_days)
+
     for node in nodes:
         result = result_by_id[node.node_id]
         availability_24h = calculate_availability(
@@ -694,11 +991,7 @@ def build_status_document(
                 "history": build_daily_history(
                     connection, node.node_id, history_days, now
                 ),
-                "incidents": enrich_incidents(
-                    build_incidents(connection, node.node_id, since_retention),
-                    node_diagnostics.get(node.node_id),
-                    server_diagnostic,
-                ),
+                "incidents": incidents_by_node[node.node_id],
                 "detail_url": node.detail_url,
             }
         )

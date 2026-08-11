@@ -5,9 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f4f7fb" />
   <title>实验室服务状态</title>
-  <link rel="stylesheet" href="/status-assets/status.css?v=18" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260811" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=20260811" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=20260811" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260811" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png?v=20260811" />
+  <link rel="stylesheet" href="/status-assets/status.css?v=31" />
 </head>
 <body>
+  <div class="qiying-transition" id="qiying-transition" aria-hidden="true">
+    <div class="qiying-transition-void"><i></i><i></i><i></i></div>
+    <div class="qiying-transition-strike">
+      <i class="qiying-transition-strike-aura"></i>
+      <i class="qiying-transition-strike-blade"></i>
+      <span class="qiying-transition-speed-lines"><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+    <div class="qiying-page-fragment qiying-page-fragment-left"><div class="qiying-page-fragment-content"></div></div>
+    <div class="qiying-page-fragment qiying-page-fragment-right"><div class="qiying-page-fragment-content"></div></div>
+    <i class="qiying-transition-flash"></i>
+    <i class="qiying-transition-scar"></i>
+    <span class="qiying-transition-shards"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <div class="qiying-card-cut" id="qiying-card-cut">
+      <div class="qiying-card-slice qiying-card-slice-left"><div class="qiying-card-slice-content"></div></div>
+      <div class="qiying-card-slice qiying-card-slice-right"><div class="qiying-card-slice-content"></div></div>
+      <i class="qiying-card-cut-flash"></i>
+      <i class="qiying-card-cut-scar"></i>
+      <span class="qiying-card-cut-shards"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+  </div>
+  <div class="fighter-duel-stage" aria-hidden="true"></div>
+  <div class="fighter-duel-effects" id="fighter-duel-effects" aria-hidden="true">
+    <i class="fighter-aura fighter-aura-ryu"></i>
+    <i class="fighter-aura fighter-aura-ken"></i>
+    <i class="fighter-aura fighter-aura-akuma"></i>
+    <i class="fighter-attack-wave fighter-attack-wave-ryu"><b></b></i>
+    <i class="fighter-attack-wave fighter-attack-wave-ken"><b></b></i>
+    <i class="fighter-attack-wave fighter-attack-wave-akuma"><b></b></i>
+    <i class="fighter-impact"></i>
+  </div>
   <div class="page-shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="返回实验室服务状态首页" data-i18n-aria="homeAria">
@@ -35,6 +70,7 @@
             <button type="button" role="radio" data-color-theme="amber"><i class="theme-swatch theme-swatch-amber"></i><span data-i18n="themes.amber">暖橙</span></button>
             <button type="button" role="radio" data-color-theme="anime"><i class="theme-swatch theme-swatch-anime"></i><span data-i18n="themes.anime">星樱</span></button>
             <button type="button" role="radio" data-color-theme="fighter"><i class="theme-swatch theme-swatch-fighter"></i><span data-i18n="themes.fighter">斗魂</span></button>
+            <button type="button" role="radio" data-color-theme="qiying"><i class="theme-swatch theme-swatch-qiying"></i><span data-i18n="themes.qiying">柒影</span></button>
           </div>
         </details>
         <button class="icon-button theme-button" id="theme-button" type="button" aria-label="切换颜色主题" data-i18n-aria="themeToggle">
@@ -68,6 +104,19 @@
           <span class="toushin-status"><b>ROUND 01</b><span data-i18n="fightHero.badge">原创格斗主题 · 实时状态</span></span>
         </div>
       </section>
+      <section class="qiying-hero" aria-label="柒影主题主视觉" data-i18n-aria="qiyingHero.aria">
+        <div class="qiying-hero-veil" aria-hidden="true"></div>
+        <div class="qiying-hero-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+        <span class="qiying-blade-glow" aria-hidden="true"></span>
+        <span class="qiying-eye-glow" aria-hidden="true"><i></i><i></i></span>
+        <div class="qiying-hero-fragments" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="qiying-hero-copy">
+          <span class="qiying-kicker">QIYING // ASSASSIN SIGNAL</span>
+          <h1 data-i18n="qiyingHero.title">柒影刃域观测站</h1>
+          <p data-i18n="qiyingHero.subtitle">刀锋划开夜色，守住每一次运算的脉搏。</p>
+          <span class="qiying-status"><i aria-hidden="true"></i><span data-i18n="qiyingHero.badge">柒影主题 · 实时状态</span></span>
+        </div>
+      </section>
       <section class="summary-grid" aria-label="状态摘要" data-i18n-aria="summaryAria">
         <article class="summary-card"><span data-i18n="summary.total">监控节点</span><strong id="total-count">—</strong><small data-i18n="summary.totalHint">全部计算服务器</small></article>
         <article class="summary-card is-online"><span data-i18n="summary.online">正常节点</span><strong id="online-count">—</strong><small data-i18n="summary.onlineHint">FRP 与 Agent 可连接</small></article>
@@ -80,13 +129,15 @@
     </main>
 
     <footer>
-      <div><span data-i18n="footer.description">实验室基础设施状态 · 详细资源信息需要登录</span><span class="icp-placeholder" data-i18n="footer.icp">ICP备案信息预留（审核中）</span></div>
+      <div><span data-i18n="footer.description">实验室基础设施状态 · 详细资源信息需要登录</span></div>
       <span id="footer-time" data-i18n="footer.waiting">等待首次检测</span>
     </footer>
   </div>
 
   <template id="node-card-template">
     <article class="node-card">
+      <span class="fighter-wave-badge" aria-hidden="true"><i></i></span>
+      <span class="qiying-blade-badge" aria-hidden="true"><i></i><b></b></span>
       <div class="node-heading">
         <div>
           <div class="node-title-row">
@@ -157,19 +208,18 @@
   <dialog class="login-dialog" id="login-dialog" aria-labelledby="login-title">
     <form class="login-form" id="login-form">
       <div class="login-heading">
-        <div><span class="login-kicker" data-i18n="auth.secureAccess">SECURE ACCESS</span><h2 id="login-title" data-i18n="auth.title">登录查看资源占用</h2></div>
+        <div><span class="login-kicker" data-i18n="auth.secureAccess">SECURE ACCESS</span><h2 id="login-title" data-i18n="auth.title">用户登录</h2></div>
         <button class="dialog-close" id="login-close" type="button" aria-label="关闭登录框" data-i18n-aria="auth.close">×</button>
       </div>
-      <p class="login-description" data-i18n="auth.description">验证通过后可查看已配置计算服务器的详细资源和进程信息。</p>
+      <p class="login-description" data-i18n="auth.description">登录以查看GPU服务器的详细资源和进程信息</p>
       <label><span data-i18n="auth.username">用户名</span><input id="login-username" name="username" type="text" autocomplete="username" maxlength="128" required /></label>
       <label><span data-i18n="auth.password">密码</span><input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="512" required /></label>
       <label class="remember-row"><input id="login-remember" name="remember" type="checkbox" /><span data-i18n="auth.remember">保持登录 30 天</span></label>
       <p class="login-message" id="login-message" role="alert" hidden></p>
       <button class="login-submit" id="login-submit" type="submit" data-i18n="auth.submit">安全登录</button>
-      <small class="login-security" data-i18n="auth.security">会话保存在 HttpOnly Cookie 中，网页脚本无法读取密码或登录令牌。</small>
     </form>
   </dialog>
 
-  <script src="/status-assets/status.js?v=14" defer></script>
+  <script src="/status-assets/status.js?v=26" defer></script>
 </body>
 </html>

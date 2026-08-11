@@ -202,13 +202,13 @@ pnpm run check:front
 {
   "servers": [
     {
-      "id": "server1",
-      "name": "5090D 服务器",
+      "id": "node-a",
+      "name": "GPU 节点 A",
       "url": "http://192.168.1.101:15896"
     },
     {
-      "id": "server2",
-      "name": "4090 服务器",
+      "id": "node-b",
+      "name": "GPU 节点 B",
       "url": "http://192.168.1.102:15896"
     }
   ]
