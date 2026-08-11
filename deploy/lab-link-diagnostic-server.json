@@ -1,0 +1,28 @@
+{
+  "role": "server",
+  "node_id": "domestic-vps",
+  "normal_interval_seconds": 30,
+  "degraded_interval_seconds": 5,
+  "recovery_successes": 3,
+  "timeout_seconds": 2,
+  "trace_cooldown_seconds": 600,
+  "heartbeat_interval_seconds": 900,
+  "local_service": "frps.service",
+  "state_path": "/var/lib/lab-link-diagnostic/public-state.json",
+  "events_path": "/var/lib/lab-link-diagnostic/events.jsonl",
+  "max_event_bytes": 1048576,
+  "primary": {
+    "name": "frps-local",
+    "host": "127.0.0.1",
+    "port": 8024
+  },
+  "secondary": {
+    "name": "nginx-local",
+    "host": "127.0.0.1",
+    "port": 443
+  },
+  "references": [
+    {"name": "public-reference-a", "host": "223.5.5.5", "port": 443},
+    {"name": "public-reference-b", "host": "1.1.1.1", "port": 443}
+  ]
+}

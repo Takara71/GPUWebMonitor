@@ -9,6 +9,8 @@ import socket
 import sqlite3
 import tempfile
 import time
+import urllib.error
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
@@ -28,6 +30,7 @@ class NodeConfig:
     host: str
     port: int
     detail_url: str
+    diagnostic_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -79,6 +82,9 @@ def load_config(config_path: str) -> tuple[list[NodeConfig], dict[str, Any]]:
                 host=str(raw_node.get("host") or "127.0.0.1"),
                 port=port,
                 detail_url=str(raw_node.get("detail_url") or "/monitor/"),
+                diagnostic_url=(
+                    str(raw_node.get("diagnostic_url") or "").strip() or None
+                ),
             )
         )
     return nodes, raw_config
@@ -144,6 +150,103 @@ def probe_nodes(
     worker_count = max(1, min(len(nodes), 8))
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         return list(executor.map(lambda node: probe_node(node, timeout_seconds), nodes))
+
+
+def load_private_token(token_path: str | None) -> str | None:
+    """从仅服务端可读文件加载 Agent Bearer Token。
+
+    Args:
+        token_path: Token 文件路径；为空时跳过诊断 API 获取。
+
+    Returns:
+        去除首尾空白后的 Token；文件不可用或为空时返回 ``None``。
+    """
+    if not token_path:
+        return None
+    try:
+        token = Path(token_path).read_text(encoding="utf-8").strip()
+        return token or None
+    except OSError:
+        return None
+
+
+def fetch_node_diagnostic(
+    node: NodeConfig,
+    bearer_token: str | None,
+    timeout_seconds: float,
+) -> dict[str, Any] | None:
+    """通过受保护的 Agent API 获取节点最近链路归因。
+
+    Args:
+        node: 包含诊断 API 地址的节点配置。
+        bearer_token: Agent API 使用的 Bearer Token。
+        timeout_seconds: 单次 HTTP 请求超时时间。
+
+    Returns:
+        Agent 返回的安全诊断状态；不可用或响应非法时返回 ``None``。
+    """
+    if not node.diagnostic_url or not bearer_token:
+        return None
+    request = urllib.request.Request(
+        node.diagnostic_url,
+        headers={
+            "Authorization": f"Bearer {bearer_token}",
+            "Accept": "application/json",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            payload_bytes = response.read(65537)
+        if len(payload_bytes) > 65536:
+            return None
+        payload = json.loads(payload_bytes.decode("utf-8"))
+        data = payload.get("data") if isinstance(payload, dict) else None
+        return data if isinstance(data, dict) else None
+    except (
+        OSError,
+        TimeoutError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        urllib.error.URLError,
+    ):
+        return None
+
+
+def fetch_node_diagnostics(
+    nodes: Sequence[NodeConfig],
+    bearer_token: str | None,
+    timeout_seconds: float,
+) -> dict[str, dict[str, Any]]:
+    """并发获取所有当前可达节点的链路诊断状态。
+
+    Args:
+        nodes: 需要获取诊断状态的节点序列。
+        bearer_token: Agent API 使用的 Bearer Token。
+        timeout_seconds: 每个节点独立使用的请求超时。
+
+    Returns:
+        按节点 ID 索引的有效诊断状态。
+    """
+    if not bearer_token:
+        return {}
+    worker_count = max(1, min(len(nodes), 8))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        states = list(
+            executor.map(
+                lambda node: fetch_node_diagnostic(
+                    node,
+                    bearer_token,
+                    timeout_seconds,
+                ),
+                nodes,
+            )
+        )
+    return {
+        node.node_id: state
+        for node, state in zip(nodes, states)
+        if state is not None
+    }
 
 
 def open_database(database_path: str) -> sqlite3.Connection:
@@ -417,6 +520,120 @@ def build_incidents(
     return list(reversed(incidents[-max(limit, 1) :]))
 
 
+DIAGNOSTIC_REASON_LABELS = {
+    "node_frpc_service_failure": "节点 FRP 客户端服务异常",
+    "node_frpc_session_failure": "节点 FRP 控制会话异常",
+    "school_local_network_or_gateway": "学校本地网络或默认网关异常",
+    "school_outbound_or_isp": "学校公网出口或运营商异常",
+    "frp_port_or_policy": "FRP 服务端口或端口策略异常",
+    "school_vps_inter_network_route": "学校与 VPS 之间的跨网路由异常",
+    "frp_link_unavailable": "FRP 公网链路异常",
+    "vps_frps_service_failure": "VPS 的 FRP 服务异常",
+    "vps_frps_port_unavailable": "VPS 的 FRP 监听端口异常",
+    "vps_upstream_network": "VPS 上游网络异常",
+}
+
+
+def load_local_diagnostic_state(state_path: str | None) -> dict[str, Any] | None:
+    """读取国内 VPS 本机生成的安全诊断状态。
+
+    Args:
+        state_path: VPS 诊断公开状态文件路径。
+
+    Returns:
+        有效状态字典；文件缺失、过大或解析失败时返回 ``None``。
+    """
+    if not state_path:
+        return None
+    try:
+        path = Path(state_path)
+        if path.stat().st_size > 65536:
+            return None
+        state = json.loads(path.read_text(encoding="utf-8"))
+        return state if isinstance(state, dict) else None
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return None
+
+
+def _incident_matches_diagnostic(
+    incident: dict[str, Any],
+    diagnostic_incident: dict[str, Any],
+    tolerance_seconds: int = 90,
+) -> bool:
+    """判断状态页故障与客户端诊断故障是否属于同一时间区间。
+
+    Args:
+        incident: 状态探针根据每分钟样本生成的故障区间。
+        diagnostic_incident: 自适应诊断服务记录的故障区间。
+        tolerance_seconds: 两种采样频率之间允许的时间偏差。
+
+    Returns:
+        两个区间在容差范围内重叠时返回 ``True``。
+    """
+    try:
+        incident_start = int(incident["started_at"])
+        diagnostic_start = int(diagnostic_incident["started_at"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    now_timestamp = int(time.time())
+    incident_end = int(incident.get("ended_at") or now_timestamp)
+    diagnostic_end = int(diagnostic_incident.get("ended_at") or now_timestamp)
+    return (
+        diagnostic_start <= incident_end + tolerance_seconds
+        and diagnostic_end >= incident_start - tolerance_seconds
+    )
+
+
+def enrich_incidents(
+    incidents: Sequence[dict[str, Any]],
+    node_diagnostic: dict[str, Any] | None,
+    server_diagnostic: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """使用双端自适应诊断为故障记录补充更精确的原因。
+
+    VPS 本机明确检测到的 FRP 服务或上游故障优先级最高；否则使用对应
+    GPU 节点恢复后上报的最近故障分类。原始 TCP 错误会保存在
+    ``raw_reason`` 字段中，便于管理员复核。
+
+    Args:
+        incidents: 状态数据库生成的故障记录。
+        node_diagnostic: GPU 节点最新安全诊断状态。
+        server_diagnostic: 国内 VPS 最新安全诊断状态。
+
+    Returns:
+        不修改输入对象的增强故障记录列表。
+    """
+    node_incident = (
+        node_diagnostic.get("last_incident")
+        if isinstance(node_diagnostic, dict)
+        else None
+    )
+    server_incident = (
+        server_diagnostic.get("last_incident")
+        if isinstance(server_diagnostic, dict)
+        else None
+    )
+    enriched: list[dict[str, Any]] = []
+    for incident in incidents:
+        item = dict(incident)
+        candidates = [server_incident, node_incident]
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            if not _incident_matches_diagnostic(item, candidate):
+                continue
+            classification = str(candidate.get("classification") or "")
+            reason = DIAGNOSTIC_REASON_LABELS.get(classification)
+            if not reason:
+                continue
+            item["raw_reason"] = item.get("reason")
+            item["reason"] = reason
+            item["diagnostic_classification"] = classification
+            break
+        enriched.append(item)
+    return enriched
+
+
 def build_status_document(
     connection: sqlite3.Connection,
     nodes: Sequence[NodeConfig],
@@ -424,6 +641,8 @@ def build_status_document(
     retention_days: int,
     history_days: int,
     check_interval_seconds: int,
+    node_diagnostics: dict[str, dict[str, Any]] | None = None,
+    server_diagnostic: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """汇总当前状态、可用率、状态条和故障记录。
 
@@ -434,6 +653,8 @@ def build_status_document(
         retention_days: 可用率和故障记录的统计天数。
         history_days: 状态条展示的自然日数量。
         check_interval_seconds: systemd 定时探测间隔秒数。
+        node_diagnostics: 按节点 ID 索引的安全链路诊断状态。
+        server_diagnostic: 国内 VPS 本机的安全链路诊断状态。
 
     Returns:
         可以直接序列化为前端状态 JSON 的字典。
@@ -442,6 +663,7 @@ def build_status_document(
     since_24h = int(time.time()) - 86400
     since_retention = int(time.time()) - max(retention_days, 1) * 86400
     result_by_id = {result.node_id: result for result in results}
+    node_diagnostics = node_diagnostics or {}
     node_documents: list[dict[str, Any]] = []
     availability_values: list[float] = []
 
@@ -472,8 +694,10 @@ def build_status_document(
                 "history": build_daily_history(
                     connection, node.node_id, history_days, now
                 ),
-                "incidents": build_incidents(
-                    connection, node.node_id, since_retention
+                "incidents": enrich_incidents(
+                    build_incidents(connection, node.node_id, since_retention),
+                    node_diagnostics.get(node.node_id),
+                    server_diagnostic,
                 ),
                 "detail_url": node.detail_url,
             }
@@ -546,6 +770,21 @@ def run_probe(config_path: str) -> dict[str, Any]:
     check_interval_seconds = max(int(config.get("check_interval_seconds", 60)), 10)
     database_path = str(config.get("database_path", "/var/lib/lab-status/status.db"))
     output_path = str(config.get("output_path", "/var/lib/lab-status/status.json"))
+    diagnostic_token = load_private_token(
+        str(config.get("diagnostic_token_file") or "").strip() or None
+    )
+    diagnostic_timeout_seconds = min(
+        max(float(config.get("diagnostic_timeout_seconds", 2)), 0.2),
+        10,
+    )
+    node_diagnostics = fetch_node_diagnostics(
+        nodes,
+        diagnostic_token,
+        diagnostic_timeout_seconds,
+    )
+    server_diagnostic = load_local_diagnostic_state(
+        str(config.get("server_diagnostic_state_path") or "").strip() or None
+    )
 
     results = probe_nodes(nodes, timeout_seconds)
     connection = open_database(database_path)
@@ -558,6 +797,8 @@ def run_probe(config_path: str) -> dict[str, Any]:
             retention_days,
             history_days,
             check_interval_seconds,
+            node_diagnostics,
+            server_diagnostic,
         )
     finally:
         connection.close()

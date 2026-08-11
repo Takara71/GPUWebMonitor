@@ -1,0 +1,37 @@
+[Unit]
+Description=Adaptive FRP link diagnostics
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/lab-link-diagnostic/link_diagnostic.py --config /etc/lab-link-diagnostic/config.json
+Restart=always
+RestartSec=5s
+StateDirectory=lab-link-diagnostic
+StateDirectoryMode=0755
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+MemoryMax=64M
+CPUQuota=5%
+
+[Install]
+WantedBy=multi-user.target

@@ -230,6 +230,36 @@ class ProcessCollectionTests(unittest.TestCase):
 
 
 class AuthenticationTests(unittest.TestCase):
+    def test_link_diagnostic_api_is_authenticated_and_redacted(self) -> None:
+        """验证链路诊断 API 复用 Agent 认证且只返回安全状态。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        diagnostic = {
+            "version": 1,
+            "node_id": "gpu-node-a",
+            "status": "degraded",
+            "classification": "school_vps_inter_network_route",
+            "evidence": {"targets": {"frps-control": {"online": False}}},
+        }
+        with mock.patch.object(agent_app, "DEPLOYMENT_MODE", deployment_mode.PUBLIC_MODE), \
+                mock.patch.object(agent_app, "AGENT_TOKEN", "agent-secret"), \
+                mock.patch.object(agent_app, "load_link_diagnostic_state", return_value=diagnostic):
+            client = agent_app.app.test_client()
+            denied = client.get("/api/link-diagnostic")
+            allowed = client.get(
+                "/api/link-diagnostic",
+                headers={"Authorization": "Bearer agent-secret"},
+            )
+
+        self.assertEqual(denied.status_code, 401)
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed.get_json()["data"], diagnostic)
+
     def test_agent_api_requires_bearer_token(self) -> None:
         """验证公网 Agent API 必须提供正确 Bearer Token。
 

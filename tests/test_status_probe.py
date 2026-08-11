@@ -166,6 +166,118 @@ class StatusProbeTests(unittest.TestCase):
         self.assertEqual(latency["samples"], 2)
         self.assertEqual(len(latency["points"]), 2)
 
+    def test_incident_reason_is_enriched_by_matching_client_diagnostic(self) -> None:
+        """验证恢复后的客户端诊断能够替换模糊 TCP 错误。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        incidents = [
+            {
+                "started_at": 1_000,
+                "ended_at": 1_120,
+                "duration_seconds": 120,
+                "reason": "连接被拒绝",
+            }
+        ]
+        diagnostic = {
+            "last_incident": {
+                "started_at": 980,
+                "ended_at": 1_100,
+                "classification": "school_vps_inter_network_route",
+            }
+        }
+
+        enriched = status_probe.enrich_incidents(incidents, diagnostic, None)
+
+        self.assertEqual(enriched[0]["reason"], "学校与 VPS 之间的跨网路由异常")
+        self.assertEqual(enriched[0]["raw_reason"], "连接被拒绝")
+        self.assertEqual(
+            enriched[0]["diagnostic_classification"],
+            "school_vps_inter_network_route",
+        )
+        self.assertEqual(incidents[0]["reason"], "连接被拒绝")
+
+    def test_vps_diagnostic_takes_precedence_over_client_route_guess(self) -> None:
+        """验证同一故障期内 VPS 明确上游异常优先于客户端推测。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        incidents = [
+            {
+                "started_at": 2_000,
+                "ended_at": 2_060,
+                "duration_seconds": 60,
+                "reason": "连接被拒绝",
+            }
+        ]
+        node_diagnostic = {
+            "last_incident": {
+                "started_at": 1_990,
+                "ended_at": 2_050,
+                "classification": "school_vps_inter_network_route",
+            }
+        }
+        server_diagnostic = {
+            "last_incident": {
+                "started_at": 2_005,
+                "ended_at": 2_055,
+                "classification": "vps_upstream_network",
+            }
+        }
+
+        enriched = status_probe.enrich_incidents(
+            incidents,
+            node_diagnostic,
+            server_diagnostic,
+        )
+
+        self.assertEqual(enriched[0]["reason"], "VPS 上游网络异常")
+        self.assertEqual(
+            enriched[0]["diagnostic_classification"],
+            "vps_upstream_network",
+        )
+
+    def test_frpc_session_failure_has_specific_public_reason(self) -> None:
+        """验证 FRP 控制会话丢失不会退化为模糊连接错误。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        incidents = [
+            {
+                "started_at": 3_000,
+                "ended_at": 3_060,
+                "duration_seconds": 60,
+                "reason": "连接被拒绝",
+            }
+        ]
+        diagnostic = {
+            "last_incident": {
+                "started_at": 2_995,
+                "ended_at": 3_055,
+                "classification": "node_frpc_session_failure",
+            }
+        }
+
+        enriched = status_probe.enrich_incidents(incidents, diagnostic, None)
+
+        self.assertEqual(enriched[0]["reason"], "节点 FRP 控制会话异常")
+        self.assertEqual(
+            enriched[0]["diagnostic_classification"],
+            "node_frpc_session_failure",
+        )
+
     def test_latency_profile_is_weighted_and_bucketed(self) -> None:
         """验证响应时间平均值按原始样本加权且趋势按时间桶压缩。
 

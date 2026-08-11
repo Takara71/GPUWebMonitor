@@ -5,27 +5,33 @@
   "check_interval_seconds": 60,
   "database_path": "/var/lib/lab-status/status.db",
   "output_path": "/var/lib/lab-status/status.json",
+  "diagnostic_token_file": "/etc/lab-status/agent-token",
+  "diagnostic_timeout_seconds": 2,
+  "server_diagnostic_state_path": "/var/lib/lab-link-diagnostic/public-state.json",
   "nodes": [
     {
       "id": "gpu-node-a",
       "name": "GPU Node A",
       "host": "127.0.0.1",
       "port": 15101,
-      "detail_url": "/monitor/?node=gpu-node-a"
+      "detail_url": "/monitor/?node=gpu-node-a",
+      "diagnostic_url": "http://127.0.0.1:15101/api/link-diagnostic"
     },
     {
       "id": "gpu-node-b",
       "name": "GPU Node B",
       "host": "127.0.0.1",
       "port": 15102,
-      "detail_url": "/monitor/?node=gpu-node-b"
+      "detail_url": "/monitor/?node=gpu-node-b",
+      "diagnostic_url": "http://127.0.0.1:15102/api/link-diagnostic"
     },
     {
       "id": "gpu-node-c",
       "name": "GPU Node C",
       "host": "127.0.0.1",
       "port": 15103,
-      "detail_url": "/monitor/?node=gpu-node-c"
+      "detail_url": "/monitor/?node=gpu-node-c",
+      "diagnostic_url": "http://127.0.0.1:15103/api/link-diagnostic"
     }
   ]
 }

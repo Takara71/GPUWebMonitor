@@ -39,6 +39,10 @@ PORT = int(os.environ.get('GPU_MONITOR_PORT', '15896'))
 HOST = os.environ.get('GPU_MONITOR_HOST', '0.0.0.0')
 AGENT_TOKEN = os.environ.get('GPU_MONITOR_AGENT_TOKEN', '')
 DEPLOYMENT_MODE = load_deployment_mode()
+LINK_DIAGNOSTIC_STATE_PATH = os.environ.get(
+    'GPU_MONITOR_LINK_DIAGNOSTIC_STATE',
+    '/var/lib/lab-link-diagnostic/public-state.json',
+)
 
 # 日志配置
 logging.basicConfig(
@@ -279,6 +283,59 @@ def get_current_status() -> Any:
         return jsonify({"code": 200, "data": data, "msg": "success"})
     except Exception as e:
         return jsonify({"code": 500, "msg": str(e)}), 500
+
+
+def load_link_diagnostic_state() -> dict[str, Any] | None:
+    """读取不含目标地址和路由明细的链路诊断公开状态。
+
+    Args:
+        无。
+
+    Returns:
+        经过字段白名单过滤的诊断状态；文件不可用时返回 ``None``。
+    """
+    try:
+        if os.path.getsize(LINK_DIAGNOSTIC_STATE_PATH) > 65536:
+            logger.error("链路诊断状态文件超过安全大小限制")
+            return None
+        with open(LINK_DIAGNOSTIC_STATE_PATH, 'r', encoding='utf-8') as handle:
+            state = json.load(handle)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return None
+    if not isinstance(state, dict):
+        return None
+
+    allowed_keys = {
+        'version',
+        'node_id',
+        'role',
+        'generated_at',
+        'status',
+        'classification',
+        'consecutive_successes',
+        'current_interval_seconds',
+        'normal_interval_seconds',
+        'degraded_interval_seconds',
+        'evidence',
+        'last_incident',
+    }
+    return {key: state[key] for key in allowed_keys if key in state}
+
+
+@app.route('/api/link-diagnostic', methods=['GET'])
+def get_link_diagnostic() -> Any:
+    """向受保护的 Agent 调用方返回最近链路诊断与故障归因。
+
+    Args:
+        无。
+
+    Returns:
+        成功时返回诊断状态；尚未生成状态时返回 HTTP 503。
+    """
+    state = load_link_diagnostic_state()
+    if state is None:
+        return jsonify({"code": 503, "msg": "Link diagnostic state unavailable"}), 503
+    return jsonify({"code": 200, "data": state, "msg": "success"})
 
 @app.route('/api/history', methods=['GET'])
 def get_history() -> Any:

@@ -67,6 +67,30 @@ systemd timer --> status_probe.py --> SQLite 可用率与故障历史
 
 这个入口不在 VPS 上持续运行 Flask 或 Node.js。`backend/status_probe.py` 每分钟执行一次后立即退出，状态页只加载原生 HTML、CSS、JavaScript；唯一新增的常驻进程是基于 Python 标准库的轻量会话校验服务。GPU 节点断线时，首页及既有历史仍可访问，对应卡片会显示离线；只有该节点的实时详细数据不可用。
 
+#### 可选的低流量链路诊断
+
+若需要进一步区分“GPU 节点本机故障”“学校出口或运营商故障”“学校到 VPS 的跨网路由波动”和“VPS/FRP 端口故障”，可以在 VPS 与各 GPU 节点部署 `backend/link_diagnostic.py`：
+
+- GPU 节点健康时每 30 秒读取本机 `/proc`，确认 `frpc` 控制连接仍为 `ESTABLISHED`，不产生额外网络流量。
+- 控制连接消失后才进入 5 秒间隔，按需检测默认网关、两个公共参考目标、VPS HTTPS 与 FRP 控制端口。
+- 连续 3 轮成功后恢复 30 秒健康模式，避免链路抖动造成状态来回切换。
+- 路由跟踪只在一次故障首次出现时执行，并有 10 分钟冷却；正常轮询不会反复运行 `mtr` 或 `traceroute`。
+- VPS 端每 30 秒检测本机 FRP 监听端口和一个公共参考目标，用于和学校侧证据进行时间关联。
+- Agent 只公开脱敏后的分类、时间和状态；目标地址、路由明细及原始错误仅保存在 root 可读的本机事件日志中。
+
+状态页会把双端诊断结果补充进故障记录。主要分类包括：节点 frpc 服务故障、节点 FRP 会话故障、学校局域网/网关、学校出口/运营商、FRP 端口或策略、学校到 VPS 的跨网路由，以及 VPS 上游网络。由于没有第三方探针，“学校到 VPS 的跨网路由”只能证明两端各自参考网络正常而互联失败，不能绝对判定是哪一家运营商的责任。
+
+相关模板：
+
+| 文件 | 作用 |
+| --- | --- |
+| `backend/link_diagnostic.py` | 双端、自适应且仅记录状态变化与低频心跳的诊断守护进程 |
+| `deploy/lab-link-diagnostic-client.json` | GPU 节点脱敏配置示例 |
+| `deploy/lab-link-diagnostic-server.json` | VPS 节点脱敏配置示例 |
+| `deploy/lab-link-diagnostic.service` | 带 CPU、内存和权限约束的 systemd 服务 |
+
+部署时应将示例中的保留测试地址替换为实际 VPS 地址，并通过环境变量 `GPU_MONITOR_LINK_DIAGNOSTIC_STATE` 指向公开状态文件。诊断服务无需新增公网端口；它复用既有 FRP、HTTPS 和 Agent 内部通道。正常模式下 GPU 节点额外网络流量为零，VPS 只进行一次很小的 TCP 握手检测，远低于业务页面与 FRP 自身的流量。
+
 登录只在公开状态页的同源弹窗中完成，详细监控不再触发浏览器 HTTP Basic 弹窗。服务端校验现有 `htpasswd` SHA-512 密码散列，成功后签发 HMAC-SHA256 Cookie；Cookie 使用 `HttpOnly`、`SameSite=Strict`，HTTPS 下使用 `__Host-` 前缀和 `Secure`。密码不会写入浏览器存储。登录接口同时启用来源校验、4 KiB 请求上限、Nginx 限速和进程内失败锁定；修改 `htpasswd` 后，既有会话会自动失效。
 
 相关模板：
@@ -76,8 +100,10 @@ systemd timer --> status_probe.py --> SQLite 可用率与故障历史
 | `status/` | 无框架、无外部 CDN 的公开状态页 |
 | `backend/session_auth.py` | 登录、签名会话、来源检查和失败锁定服务 |
 | `backend/status_probe.py` | 并发 TCP 探测、SQLite 历史和静态 JSON 生成器 |
+| `backend/link_diagnostic.py` | 可选的自适应双端 FRP 链路诊断服务 |
 | `deploy/lab-session-auth.service` | 会话校验 systemd 服务 |
 | `deploy/lab-status-nodes.json` | 探测节点与历史数据路径示例 |
+| `deploy/lab-link-diagnostic.service` | 链路诊断 systemd 服务 |
 | `deploy/lab-status-probe.service` | 单次探测 systemd 服务 |
 | `deploy/lab-status-probe.timer` | 每分钟触发探测的定时器 |
 | `deploy/nginx-lab-auth-limit.conf` | 登录接口 Nginx 限速区 |
