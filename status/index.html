@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=20260811" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260811" />
   <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png?v=20260811" />
-  <link rel="stylesheet" href="/status-assets/status.css?v=31" />
+  <link rel="stylesheet" href="/status-assets/status.css?v=39" />
 </head>
 <body>
   <div class="qiying-transition" id="qiying-transition" aria-hidden="true">
@@ -20,12 +20,26 @@
       <i class="qiying-transition-strike-blade"></i>
       <span class="qiying-transition-speed-lines"><i></i><i></i><i></i><i></i><i></i></span>
     </div>
+    <div class="qiying-detail-scene" aria-hidden="true">
+      <i class="qiying-detail-idle"></i>
+      <i class="qiying-detail-strike"></i>
+      <i class="qiying-detail-slash"></i>
+      <i class="qiying-detail-curtain"></i>
+    </div>
     <div class="qiying-page-fragment qiying-page-fragment-left"><div class="qiying-page-fragment-content"></div></div>
     <div class="qiying-page-fragment qiying-page-fragment-right"><div class="qiying-page-fragment-content"></div></div>
-    <i class="qiying-transition-flash"></i>
-    <i class="qiying-transition-scar"></i>
+    <i class="qiying-transition-flash" aria-hidden="true"></i>
+    <svg class="qiying-transition-cut" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+      <polyline class="qiying-transition-cut-halo"></polyline>
+      <polyline class="qiying-transition-cut-core"></polyline>
+    </svg>
     <span class="qiying-transition-shards"><i></i><i></i><i></i><i></i><i></i><i></i></span>
     <div class="qiying-card-cut" id="qiying-card-cut">
+      <div class="qiying-card-reveal" aria-hidden="true">
+        <i class="qiying-card-reveal-idle"></i>
+        <i class="qiying-card-reveal-strike"></i>
+        <b class="qiying-card-reveal-sigil"></b>
+      </div>
       <div class="qiying-card-slice qiying-card-slice-left"><div class="qiying-card-slice-content"></div></div>
       <div class="qiying-card-slice qiying-card-slice-right"><div class="qiying-card-slice-content"></div></div>
       <i class="qiying-card-cut-flash"></i>
@@ -197,11 +211,21 @@
         <div><h2 id="latency-dialog-title" data-i18n="latency.title">响应时间趋势</h2><p id="latency-dialog-node"></p></div>
         <button class="dialog-close" id="latency-dialog-close" type="button" aria-label="关闭响应时间趋势" data-i18n-aria="latency.closeAria">×</button>
       </div>
-      <div class="latency-chart-summary"><span data-i18n="latency.average">24 小时平均</span><strong id="latency-dialog-average">—</strong></div>
+      <div class="latency-chart-summary">
+        <span><small data-i18n="latency.average">成功连接平均延迟</small><strong id="latency-dialog-average">—</strong></span>
+        <span><small data-i18n="latency.availability">24 小时探测可用率</small><strong id="latency-dialog-availability">—</strong></span>
+        <span><small data-i18n="latency.failures">连接失败</small><strong id="latency-dialog-failures">—</strong></span>
+      </div>
       <div class="latency-chart-wrap">
         <svg id="latency-chart" viewBox="0 0 820 340" role="img" aria-label="最近二十四小时响应时间折线图" data-i18n-aria="latency.chartAria"></svg>
         <p class="latency-chart-empty" id="latency-chart-empty" hidden data-i18n="latency.empty">最近 24 小时暂无响应时间样本</p>
       </div>
+      <div class="latency-chart-legend" aria-hidden="true">
+        <span class="is-success"><i></i><b data-i18n="latency.successLegend">成功连接延迟</b></span>
+        <span class="is-degraded"><i></i><b data-i18n="latency.degradedLegend">部分探测失败</b></span>
+        <span class="is-offline"><i></i><b data-i18n="latency.offlineLegend">完全无法连接</b></span>
+      </div>
+      <p class="latency-chart-note" data-i18n="latency.successfulOnly">延迟仅统计成功建立连接的探测；无法连接单独显示为故障区间。</p>
     </section>
   </dialog>
 
@@ -220,6 +244,6 @@
     </form>
   </dialog>
 
-  <script src="/status-assets/status.js?v=26" defer></script>
+  <script src="/status-assets/status.js?v=34" defer></script>
 </body>
 </html>

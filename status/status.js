@@ -8,7 +8,12 @@ const LOCALE_STORAGE_KEY = 'locale-preference';
 const THEME_STORAGE_KEY = 'theme-preference';
 const COLOR_THEME_STORAGE_KEY = 'color-theme-preference';
 const FIGHTER_NODE_ORDER = ['ryu', 'ken', 'akuma'];
+const QIYING_NODE_VARIANTS = ['violet', 'azure', 'crimson'];
 const COLOR_THEMES = ['green', 'ocean', 'violet', 'amber', 'anime', 'fighter', 'qiying'];
+const QIYING_CUT_PATH = Object.freeze([
+  [34, 0], [35.7, 14], [34.8, 23], [39.3, 37], [38.2, 46],
+  [44.1, 59], [43.4, 67], [49.2, 78], [48.6, 87], [55, 100],
+]);
 
 const LOCALES = {
   zh: { htmlLang: 'zh-CN', label: '中文' },
@@ -25,10 +30,10 @@ const TRANSLATIONS = {
     qiyingHero: { aria: '柒影刺客主题主视觉', title: '柒影刃域观测站', subtitle: '刀锋划开夜色，守住每一次运算的脉搏。', badge: '柒影主题 · 实时状态' },
     refresh: { loading: '正在获取状态', updating: '正在刷新', countdown: (seconds) => `刷新时间 ${seconds} 秒`, manualAria: '立即刷新状态并重置倒计时' },
     summary: { total: '监控节点', totalHint: '全部计算服务器', online: '正常节点', onlineHint: 'FRP 与 Agent 可连接', offline: '异常节点', offlineHint: '连接超时或中断', availability: '平均可用率', availabilityHint: '最近 30 天' },
-    node: { averageLatency: '平均响应时间', last24h: '最近 24 小时', availability: '平均运行时间', cloudHistory: '最近30天', historyAria: '最近三十天服务状态', daysAgo: '30 天前', today: '今天', online: '在线', offline: '离线', checked: (time) => `检测于 ${time}`, healthy: '运行正常', unhealthy: '连接异常', failed: '连接失败', empty: '尚未配置计算节点', tooltipAvailability: (value) => `可用率：${value}` },
+    node: { averageLatency: '成功连接延迟', last24h: '最近 24 小时', availability: '平均运行时间', cloudHistory: '最近30天', historyAria: '最近三十天服务状态', daysAgo: '30 天前', today: '今天', online: '在线', offline: '离线', checked: (time) => `检测于 ${time}`, healthy: '运行正常', unhealthy: '连接异常', failed: '连接失败', empty: '尚未配置计算节点', tooltipAvailability: (value) => `可用率：${value}` },
     resource: { cpu: 'CPU', memory: '内存', gpu: 'GPU', openAria: '打开详细资源监控' },
     ssh: { copyAria: '复制 SSH 连接指令', copied: '已复制', failed: '复制失败' },
-    latency: { title: '响应时间趋势', average: '24 小时平均', openAria: '查看响应时间趋势', closeAria: '关闭响应时间趋势', chartAria: '最近二十四小时响应时间折线图', empty: '最近 24 小时暂无响应时间样本' },
+    latency: { title: '连接质量趋势', average: '成功连接平均延迟', availability: '24 小时探测可用率', failures: '连接失败', failureCount: (value) => `${value} 次`, openAria: '查看连接质量趋势', closeAria: '关闭连接质量趋势', chartAria: '最近二十四小时连接延迟与失败时段图', empty: '最近 24 小时暂无连接探测样本', successLegend: '成功连接延迟', degradedLegend: '部分探测失败', offlineLegend: '完全无法连接', successfulOnly: '延迟仅统计成功建立连接的探测；无法连接单独显示为故障区间。', unavailable: '无法连接', bucketAvailability: (value) => `该时段可用率：${value}` },
     incident: { title: '故障记录', count: (value) => `${value} 条`, empty: '近期无故障记录', ongoing: (duration) => `持续中 · ${duration}` },
     auth: { loginResource: '登录查看资源占用', viewResource: '查看资源占用', secureAccess: '安全访问', title: '用户登录', close: '关闭登录框', description: '登录以查看GPU服务器的详细资源和进程信息', username: '用户名', password: '密码', remember: '保持登录 30 天', submit: '安全登录', submitting: '正在验证…', invalid: '用户名或密码错误。', locked: (seconds) => `尝试次数过多，请在 ${seconds} 秒后重试。`, failed: '登录服务暂时不可用，请稍后重试。' },
     footer: { description: '实验室基础设施状态 · 详细资源信息需要登录', waiting: '等待首次检测', checked: (time) => `最后检测：${time}` },
@@ -43,10 +48,10 @@ const TRANSLATIONS = {
     qiyingHero: { aria: 'Seven assassin theme key visual', title: 'Seven · Blade Signal', subtitle: 'A blade parts the night and guards every pulse of computation.', badge: 'Seven theme · Live status' },
     refresh: { loading: 'Loading status', updating: 'Refreshing', countdown: (seconds) => `Refresh in ${seconds}s`, manualAria: 'Refresh status now and reset the countdown' },
     summary: { total: 'Monitored nodes', totalHint: 'All compute servers', online: 'Healthy nodes', onlineHint: 'FRP and Agent are reachable', offline: 'Affected nodes', offlineHint: 'Timed out or disconnected', availability: 'Average uptime', availabilityHint: 'Last 30 days' },
-    node: { averageLatency: 'Average response time', last24h: 'Last 24 hours', availability: 'Average uptime', cloudHistory: 'Last 30 days', historyAria: 'Service status for the last thirty days', daysAgo: '30 days ago', today: 'Today', online: 'Online', offline: 'Offline', checked: (time) => `Checked ${time}`, healthy: 'Operating normally', unhealthy: 'Connection unavailable', failed: 'Connection failed', empty: 'No compute node is configured', tooltipAvailability: (value) => `Availability: ${value}` },
+    node: { averageLatency: 'Successful connection latency', last24h: 'Last 24 hours', availability: 'Average uptime', cloudHistory: 'Last 30 days', historyAria: 'Service status for the last thirty days', daysAgo: '30 days ago', today: 'Today', online: 'Online', offline: 'Offline', checked: (time) => `Checked ${time}`, healthy: 'Operating normally', unhealthy: 'Connection unavailable', failed: 'Connection failed', empty: 'No compute node is configured', tooltipAvailability: (value) => `Availability: ${value}` },
     resource: { cpu: 'CPU', memory: 'Memory', gpu: 'GPU', openAria: 'Open detailed resource monitoring' },
     ssh: { copyAria: 'Copy SSH connection command', copied: 'Copied', failed: 'Copy failed' },
-    latency: { title: 'Response time trend', average: '24-hour average', openAria: 'View response time trend', closeAria: 'Close response time trend', chartAria: 'Response time chart for the last 24 hours', empty: 'No response time samples in the last 24 hours' },
+    latency: { title: 'Connection quality trend', average: 'Successful connection latency', availability: '24-hour probe availability', failures: 'Failed connections', failureCount: (value) => `${value}`, openAria: 'View connection quality trend', closeAria: 'Close connection quality trend', chartAria: 'Connection latency and failed periods for the last 24 hours', empty: 'No connection probes in the last 24 hours', successLegend: 'Successful latency', degradedLegend: 'Partial failures', offlineLegend: 'Unreachable', successfulOnly: 'Latency includes successful connections only; unreachable probes are shown as outage periods.', unavailable: 'Unreachable', bucketAvailability: (value) => `Period availability: ${value}` },
     incident: { title: 'Incidents', count: (value) => `${value}`, empty: 'No recent incidents', ongoing: (duration) => `Ongoing · ${duration}` },
     auth: { loginResource: 'Sign in for resource usage', viewResource: 'View resource usage', secureAccess: 'SECURE ACCESS', title: 'User Sign In', close: 'Close sign-in dialog', description: 'Sign in to view detailed GPU server resources and process information.', username: 'Username', password: 'Password', remember: 'Keep me signed in for 30 days', submit: 'Secure sign in', submitting: 'Verifying…', invalid: 'Incorrect username or password.', locked: (seconds) => `Too many attempts. Try again in ${seconds} seconds.`, failed: 'The sign-in service is temporarily unavailable.' },
     footer: { description: 'Lab infrastructure status · detailed resource data requires sign-in', waiting: 'Waiting for the first check', checked: (time) => `Last check: ${time}` },
@@ -61,10 +66,10 @@ const TRANSLATIONS = {
     qiyingHero: { aria: '柒影アサシンテーマのキービジュアル', title: '柒影・刃域観測所', subtitle: '刃が夜を裂き、すべての演算の鼓動を守る。', badge: '柒影テーマ · ライブ状態' },
     refresh: { loading: '状態を取得中', updating: '更新中', countdown: (seconds) => `更新まで ${seconds} 秒`, manualAria: '状態を今すぐ更新してカウントダウンをリセット' },
     summary: { total: '監視ノード', totalHint: 'すべての計算サーバー', online: '正常ノード', onlineHint: 'FRP と Agent に接続可能', offline: '異常ノード', offlineHint: 'タイムアウトまたは切断', availability: '平均稼働率', availabilityHint: '過去 30 日間' },
-    node: { averageLatency: '平均応答時間', last24h: '過去 24 時間', availability: '平均稼働時間', cloudHistory: '過去 30 日間', historyAria: '過去三十日間のサービス状態', daysAgo: '30 日前', today: '今日', online: 'オンライン', offline: 'オフライン', checked: (time) => `${time} に確認`, healthy: '正常稼働', unhealthy: '接続異常', failed: '接続失敗', empty: '計算ノードが設定されていません', tooltipAvailability: (value) => `稼働率：${value}` },
+    node: { averageLatency: '成功接続の遅延', last24h: '過去 24 時間', availability: '平均稼働時間', cloudHistory: '過去 30 日間', historyAria: '過去三十日間のサービス状態', daysAgo: '30 日前', today: '今日', online: 'オンライン', offline: 'オフライン', checked: (time) => `${time} に確認`, healthy: '正常稼働', unhealthy: '接続異常', failed: '接続失敗', empty: '計算ノードが設定されていません', tooltipAvailability: (value) => `稼働率：${value}` },
     resource: { cpu: 'CPU', memory: 'メモリ', gpu: 'GPU', openAria: '詳細なリソース監視を開く' },
     ssh: { copyAria: 'SSH 接続コマンドをコピー', copied: 'コピー済み', failed: 'コピー失敗' },
-    latency: { title: '応答時間の推移', average: '24 時間平均', openAria: '応答時間の推移を表示', closeAria: '応答時間の推移を閉じる', chartAria: '過去 24 時間の応答時間グラフ', empty: '過去 24 時間の応答時間サンプルはありません' },
+    latency: { title: '接続品質の推移', average: '成功接続の平均遅延', availability: '24 時間のプローブ稼働率', failures: '接続失敗', failureCount: (value) => `${value} 回`, openAria: '接続品質の推移を表示', closeAria: '接続品質の推移を閉じる', chartAria: '過去 24 時間の接続遅延と障害時間帯', empty: '過去 24 時間の接続プローブはありません', successLegend: '成功接続の遅延', degradedLegend: '一部失敗', offlineLegend: '接続不能', successfulOnly: '遅延は成功した接続のみを集計し、接続不能は障害時間帯として表示します。', unavailable: '接続不能', bucketAvailability: (value) => `時間帯の稼働率：${value}` },
     incident: { title: '障害履歴', count: (value) => `${value} 件`, empty: '最近の障害はありません', ongoing: (duration) => `継続中 · ${duration}` },
     auth: { loginResource: 'ログインして使用状況を表示', viewResource: 'リソース使用状況を表示', secureAccess: '安全なアクセス', title: 'ユーザーログイン', close: 'ログイン画面を閉じる', description: 'ログインすると、GPU サーバーの詳細なリソースとプロセス情報を確認できます。', username: 'ユーザー名', password: 'パスワード', remember: '30 日間ログイン状態を保持', submit: '安全にログイン', submitting: '確認中…', invalid: 'ユーザー名またはパスワードが正しくありません。', locked: (seconds) => `試行回数が多すぎます。${seconds} 秒後に再試行してください。`, failed: 'ログインサービスは一時的に利用できません。' },
     footer: { description: 'ラボ基盤の状態 · 詳細なリソース情報にはログインが必要です', waiting: '最初の確認を待っています', checked: (time) => `最終確認：${time}` },
@@ -91,10 +96,15 @@ const pageState = {
   fighterNavigationTimeout: null,
   qiyingThemeTimeouts: [],
   qiyingNavigationTimeout: null,
+  qiyingNavigationFrame: null,
   qiyingNavigationPending: false,
   qiyingActiveCard: null,
   qiyingPreloadedAssets: [],
+  qiyingCardSnapshots: new Map(),
+  qiyingWarmupHandle: null,
   prefetchedDetailUrls: new Set(),
+  prefetchedDetailAssetUrls: new Set(),
+  monitorWarmupPromise: null,
   latestDocument: null,
   suspended: false,
   resourceRequestVersion: 0,
@@ -318,7 +328,15 @@ function createNodeCard(node) {
     if (card.statusNode) openLatencyDialog(card.statusNode);
   });
   card.querySelector('.detail-link').addEventListener('click', handleDetailLinkClick);
-  card.querySelector('.resource-preview').addEventListener('click', handleDetailLinkClick);
+  const resourcePreview = card.querySelector('.resource-preview');
+  resourcePreview.addEventListener('click', handleDetailLinkClick);
+  const warmDetailTransition = () => {
+    warmQiyingCardSnapshot(card);
+    void warmMonitorShell(resourcePreview.getAttribute('href') || '/monitor/');
+  };
+  card.addEventListener('pointerenter', warmDetailTransition);
+  resourcePreview.addEventListener('focus', warmDetailTransition);
+  resourcePreview.addEventListener('pointerdown', warmDetailTransition);
   const copyButton = card.querySelector('.copy-ssh-button');
   copyButton.addEventListener('click', () => {
     const currentCommand = pageState.authenticated ? pageState.sshCommands[card.dataset.nodeId] : '';
@@ -344,6 +362,21 @@ function resolveNodeFighter(node, index) {
   if (identity.includes('4090-1') || identity.includes('4090_1')) return 'ken';
   if (identity.includes('4090-2') || identity.includes('4090_2') || identity.includes('server-0')) return 'akuma';
   return FIGHTER_NODE_ORDER[index % FIGHTER_NODE_ORDER.length];
+}
+
+/**
+ * 为柒影详情转场分配稳定的节点刀路与能量色。
+ *
+ * @param {object} node - 状态接口返回的节点对象。
+ * @param {number} index - 节点在当前状态文档中的顺序。
+ * @returns {'violet'|'azure'|'crimson'} 节点对应的柒影转场变体。
+ */
+function resolveQiyingNodeVariant(node, index) {
+  const identity = `${node?.id || ''} ${node?.name || ''}`.toLowerCase().replaceAll(' ', '');
+  if (identity.includes('5090')) return 'violet';
+  if (identity.includes('4090-1') || identity.includes('4090_1')) return 'azure';
+  if (identity.includes('4090-2') || identity.includes('4090_2') || identity.includes('server-0')) return 'crimson';
+  return QIYING_NODE_VARIANTS[index % QIYING_NODE_VARIANTS.length];
 }
 
 /**
@@ -396,6 +429,7 @@ function updateNodeCard(card, node) {
   const sshCommand = pageState.authenticated ? pageState.sshCommands[node.id] : '';
   copyButton.hidden = !sshCommand;
   copyButton.title = sshCommand ? `${translate('ssh.copyAria')}：${sshCommand}` : translate('ssh.copyAria');
+  invalidateQiyingCardSnapshot(card);
 }
 
 /**
@@ -425,6 +459,7 @@ function renderNodes(nodes) {
     const card = existingCards.get(nodeId) || createNodeCard(node);
     if (existingCards.has(nodeId)) updateNodeCard(card, node);
     card.dataset.fighter = resolveNodeFighter(node, index);
+    card.dataset.qiyingVariant = resolveQiyingNodeVariant(node, index);
     return card;
   });
   existingCards.forEach((card, nodeId) => {
@@ -438,6 +473,7 @@ function renderNodes(nodes) {
   if (pageState.authenticated) {
     void loadResourcePreviews();
     prefetchDetailDocuments();
+    scheduleQiyingCardWarmup();
   }
 }
 
@@ -448,8 +484,10 @@ function renderNodes(nodes) {
  */
 function prefetchDetailDocuments() {
   if (!pageState.authenticated) return;
+  let firstDestination = '';
   document.querySelectorAll('.node-card .resource-preview').forEach((anchor) => {
     const destination = safeMonitorPath(anchor.getAttribute('href') || '');
+    if (destination && !firstDestination) firstDestination = destination;
     if (!destination || pageState.prefetchedDetailUrls.has(destination)) return;
     pageState.prefetchedDetailUrls.add(destination);
     const prefetch = document.createElement('link');
@@ -458,6 +496,52 @@ function prefetchDetailDocuments() {
     prefetch.href = destination;
     document.head.appendChild(prefetch);
   });
+  if (firstDestination) void warmMonitorShell(firstDestination);
+}
+
+/**
+ * 预热详情页 HTML 与其同源静态资源，避免第一次导航才下载监控前端依赖。
+ *
+ * 这里只写入浏览器 HTTP 缓存，不执行详情页脚本，也不会提前请求动态节点数据。
+ * 因此能够降低首跳等待，同时不会在首页创建第二套 Vue 应用。
+ *
+ * @param {string} destination - 已配置节点的详情页地址。
+ * @returns {Promise<void>} 详情页外壳及其静态依赖完成缓存尝试时兑现的 Promise。
+ */
+async function warmMonitorShell(destination) {
+  if (!pageState.authenticated) return;
+  const safeDestination = safeMonitorPath(destination);
+  if (!safeDestination) return;
+  if (pageState.monitorWarmupPromise) return pageState.monitorWarmupPromise;
+  pageState.monitorWarmupPromise = (async () => {
+    const response = await fetch(safeDestination, {
+      cache: 'force-cache',
+      credentials: 'same-origin',
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const markup = await response.text();
+    const detailDocument = new DOMParser().parseFromString(markup, 'text/html');
+    const assetUrls = new Set();
+    detailDocument.querySelectorAll('link[rel="stylesheet"][href], script[src], img[src]').forEach((element) => {
+      const attribute = element.tagName === 'LINK' ? 'href' : 'src';
+      const rawUrl = element.getAttribute(attribute) || '';
+      try {
+        const absoluteUrl = new URL(rawUrl, response.url || window.location.href);
+        if (absoluteUrl.origin === window.location.origin) assetUrls.add(absoluteUrl.href);
+      } catch (_error) {
+        // 忽略详情文档中无法解析的可选资源，不影响其余预热任务。
+      }
+    });
+    await Promise.allSettled([...assetUrls].map(async (assetUrl) => {
+      if (pageState.prefetchedDetailAssetUrls.has(assetUrl)) return;
+      pageState.prefetchedDetailAssetUrls.add(assetUrl);
+      const assetResponse = await fetch(assetUrl, { cache: 'force-cache', credentials: 'same-origin' });
+      if (assetResponse.ok) await assetResponse.blob();
+    }));
+  })().catch(() => {
+    pageState.monitorWarmupPromise = null;
+  });
+  return pageState.monitorWarmupPromise;
 }
 
 /**
@@ -629,6 +713,8 @@ function applyTheme(theme, persist = true) {
   document.documentElement.dataset.theme = pageState.resolvedTheme;
   document.querySelector('meta[name="theme-color"]').content = pageState.resolvedTheme === 'dark' ? '#0e1522' : '#f4f7fb';
   if (persist) localStorage.setItem(THEME_STORAGE_KEY, normalized);
+  clearPreparedQiyingCardSnapshots();
+  if (pageState.colorTheme === 'qiying') scheduleQiyingCardWarmup();
 }
 
 /**
@@ -650,6 +736,8 @@ function applyColorTheme(theme, persist = true) {
     button.setAttribute('aria-checked', String(active));
   });
   if (persist) localStorage.setItem(COLOR_THEME_STORAGE_KEY, normalized);
+  if (normalized === 'qiying') scheduleQiyingCardWarmup();
+  else clearPreparedQiyingCardSnapshots();
 }
 
 /**
@@ -785,12 +873,37 @@ function renderLatencyChart(node) {
   document.querySelector('#latency-dialog-average').textContent = average === null
     ? '—'
     : `${average.toFixed(1)} ms`;
+  document.querySelector('#latency-dialog-availability').textContent = formatAvailability(profile.availability);
+  document.querySelector('#latency-dialog-failures').textContent = translate(
+    'latency.failureCount',
+    Number(profile.failed_samples) || 0,
+  );
   document.querySelector('#latency-dialog-node').textContent = `${nodeDisplayName(node)} · ${translate('node.last24h')}`;
   chart.replaceChildren();
 
   const points = (Array.isArray(profile.points) ? profile.points : [])
-    .map((point) => ({ timestamp: Number(point.timestamp), latency: Number(point.latency_ms) }))
-    .filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.latency) && point.latency >= 0)
+    .map((point) => {
+      const latency = point.latency_ms === null || point.latency_ms === undefined
+        ? null
+        : Number(point.latency_ms);
+      const successSamples = Number(point.success_samples ?? point.samples) || 0;
+      const failedSamples = Number(point.failed_samples) || 0;
+      const totalSamples = Number(point.total_samples) || (successSamples + failedSamples);
+      return {
+        timestamp: Number(point.timestamp),
+        latency: Number.isFinite(latency) && latency >= 0 ? latency : null,
+        successSamples,
+        failedSamples,
+        totalSamples,
+        availability: point.availability === null || point.availability === undefined
+          ? (totalSamples ? successSamples / totalSamples * 100 : null)
+          : Number(point.availability),
+        state: ['online', 'degraded', 'offline'].includes(point.state)
+          ? point.state
+          : (failedSamples ? (successSamples ? 'degraded' : 'offline') : 'online'),
+      };
+    })
+    .filter((point) => Number.isFinite(point.timestamp) && point.totalSamples > 0)
     .sort((first, second) => first.timestamp - second.timestamp);
   empty.hidden = points.length > 0;
   chart.hidden = points.length === 0;
@@ -803,10 +916,38 @@ function renderLatencyChart(node) {
   const plotHeight = height - padding.top - padding.bottom;
   const endTimestamp = Number(pageState.latestDocument?.generated_at_unix) || Math.floor(Date.now() / 1000);
   const startTimestamp = endTimestamp - 86400;
-  const maximumLatency = Math.max(10, ...points.map((point) => point.latency));
+  const successfulLatencies = points
+    .map((point) => point.latency)
+    .filter((latency) => latency !== null);
+  const maximumLatency = Math.max(10, ...successfulLatencies);
   const yMaximum = Math.ceil(maximumLatency / 10) * 10;
   const xFor = (timestamp) => padding.left + Math.min(Math.max((timestamp - startTimestamp) / 86400, 0), 1) * plotWidth;
   const yFor = (latency) => padding.top + (1 - Math.min(latency / yMaximum, 1)) * plotHeight;
+  const bucketSeconds = Math.max(Number(profile.bucket_seconds) || 900, 60);
+
+  points.forEach((point) => {
+    if (point.state === 'online') return;
+    const x = xFor(Math.max(point.timestamp, startTimestamp));
+    const endX = xFor(Math.min(point.timestamp + bucketSeconds, endTimestamp));
+    const band = createSvgElement('rect', {
+      x,
+      y: padding.top,
+      width: Math.max(endX - x, 3),
+      height: plotHeight,
+      rx: 3,
+      class: `latency-failure-band is-${point.state}`,
+    });
+    const title = createSvgElement('title');
+    const availability = Number.isFinite(point.availability)
+      ? formatAvailability(point.availability)
+      : '—';
+    const latencyText = point.latency === null
+      ? translate('latency.unavailable')
+      : `${point.latency.toFixed(1)} ms`;
+    title.textContent = `${formatTimestamp(point.timestamp)} · ${latencyText}\n${translate('latency.bucketAvailability', availability)} · ${translate('latency.failureCount', point.failedSamples)}`;
+    band.appendChild(title);
+    chart.appendChild(band);
+  });
 
   for (let index = 0; index <= 5; index += 1) {
     const ratio = index / 5;
@@ -831,25 +972,44 @@ function renderLatencyChart(node) {
     chart.appendChild(label);
   }
 
-  const bucketSeconds = Math.max(Number(profile.bucket_seconds) || 900, 60);
   let pathData = '';
   let previousTimestamp = null;
   points.forEach((point) => {
-    const command = previousTimestamp !== null && point.timestamp - previousTimestamp <= bucketSeconds * 2.5 ? 'L' : 'M';
+    if (point.latency === null || point.state === 'offline') {
+      previousTimestamp = null;
+      return;
+    }
+    const command = previousTimestamp !== null && point.timestamp - previousTimestamp <= bucketSeconds * 1.5 ? 'L' : 'M';
     pathData += `${command}${xFor(point.timestamp).toFixed(1)},${yFor(point.latency).toFixed(1)} `;
     previousTimestamp = point.timestamp;
   });
-  chart.appendChild(createSvgElement('path', { d: pathData.trim(), class: 'latency-chart-line' }));
+  if (pathData.trim()) {
+    chart.appendChild(createSvgElement('path', { d: pathData.trim(), class: 'latency-chart-line' }));
+  }
 
   points.forEach((point) => {
+    if (point.latency === null) {
+      const marker = createSvgElement('path', {
+        d: `M${(xFor(point.timestamp) - 4).toFixed(1)},${(padding.top + plotHeight - 8).toFixed(1)} l8,8 m0,-8 l-8,8`,
+        class: 'latency-failure-marker',
+      });
+      const title = createSvgElement('title');
+      title.textContent = `${formatTimestamp(point.timestamp)} · ${translate('latency.unavailable')} · ${translate('latency.failureCount', point.failedSamples)}`;
+      marker.appendChild(title);
+      chart.appendChild(marker);
+      return;
+    }
     const marker = createSvgElement('circle', {
       cx: xFor(point.timestamp),
       cy: yFor(point.latency),
       r: 2.5,
-      class: 'latency-chart-point',
+      class: `latency-chart-point is-${point.state}`,
     });
     const title = createSvgElement('title');
-    title.textContent = `${formatTimestamp(point.timestamp)} · ${point.latency.toFixed(1)} ms`;
+    const availability = Number.isFinite(point.availability)
+      ? formatAvailability(point.availability)
+      : '—';
+    title.textContent = `${formatTimestamp(point.timestamp)} · ${point.latency.toFixed(1)} ms\n${translate('latency.bucketAvailability', availability)} · ${translate('latency.failureCount', point.failedSamples)}`;
     marker.appendChild(title);
     chart.appendChild(marker);
   });
@@ -914,6 +1074,8 @@ function renderResourcePreview(card, status) {
       renderResourceMetric(card, 'gpu', null);
     }
     preview.classList.add('is-unavailable');
+    invalidateQiyingCardSnapshot(card);
+    scheduleQiyingCardWarmup();
     return;
   }
   const payload = status?.data ?? status;
@@ -922,6 +1084,8 @@ function renderResourcePreview(card, status) {
   renderResourceMetric(card, 'gpu', payload?.gpu?.summary?.avg_gpu_utilization);
   preview.classList.add('has-resource-data');
   preview.classList.remove('is-unavailable');
+  invalidateQiyingCardSnapshot(card);
+  scheduleQiyingCardWarmup();
 }
 
 /**
@@ -1038,6 +1202,9 @@ function applyAuthenticationState(authenticated) {
     void loadResourcePreviews();
     void loadSshCommands();
     prefetchDetailDocuments();
+    scheduleQiyingCardWarmup();
+  } else {
+    clearPreparedQiyingCardSnapshots();
   }
 }
 
@@ -1107,15 +1274,127 @@ function createQiyingVisualClone(source, className) {
 }
 
 /**
+ * 取消尚未执行的卡片快照空闲任务。
+ *
+ * @returns {void}
+ */
+function cancelQiyingCardWarmup() {
+  const handle = pageState.qiyingWarmupHandle;
+  if (!handle) return;
+  if (handle.kind === 'idle' && typeof window.cancelIdleCallback === 'function') {
+    window.cancelIdleCallback(handle.id);
+  } else {
+    window.clearTimeout(handle.id);
+  }
+  pageState.qiyingWarmupHandle = null;
+}
+
+/**
+ * 清空尚未消费的柒影卡片快照，释放离屏 DOM 占用。
+ *
+ * @returns {void}
+ */
+function clearPreparedQiyingCardSnapshots() {
+  cancelQiyingCardWarmup();
+  pageState.qiyingCardSnapshots.clear();
+}
+
+/**
+ * 使单张卡片的预制快照失效，并递增其视觉版本。
+ *
+ * 状态、资源数值或语言更新后必须重新生成快照，否则斩开的两半可能显示旧数据。
+ *
+ * @param {HTMLElement} card - 内容刚刚发生变化的服务器卡片。
+ * @returns {void}
+ */
+function invalidateQiyingCardSnapshot(card) {
+  const nodeId = card?.dataset.nodeId || '';
+  if (nodeId) pageState.qiyingCardSnapshots.delete(nodeId);
+  const currentVersion = Number(card?.dataset.qiyingSnapshotVersion) || 0;
+  if (card) card.dataset.qiyingSnapshotVersion = String(currentVersion + 1);
+}
+
+/**
+ * 在点击前创建卡片两块断面所需的 DOM 副本。
+ *
+ * @param {HTMLElement|null} card - 需要预制详情转场快照的服务器卡片。
+ * @returns {void}
+ */
+function warmQiyingCardSnapshot(card) {
+  if (
+    !card
+    || !card.isConnected
+    || !pageState.authenticated
+    || pageState.colorTheme !== 'qiying'
+    || pageState.qiyingNavigationPending
+  ) return;
+  const nodeId = card.dataset.nodeId || '';
+  if (!nodeId) return;
+  const version = card.dataset.qiyingSnapshotVersion || '0';
+  const prepared = pageState.qiyingCardSnapshots.get(nodeId);
+  if (prepared?.version === version) return;
+  const firstClone = createQiyingVisualClone(card, 'qiying-card-snapshot');
+  firstClone.classList.remove('is-qiying-source-hidden');
+  const secondClone = firstClone.cloneNode(true);
+  pageState.qiyingCardSnapshots.set(nodeId, { version, firstClone, secondClone });
+}
+
+/**
+ * 取出与卡片当前视觉版本一致的两块预制断面。
+ *
+ * @param {HTMLElement} card - 即将播放斩击转场的服务器卡片。
+ * @returns {{firstClone: HTMLElement, secondClone: HTMLElement}|null} 可直接挂载的副本；未命中时返回 null。
+ */
+function takeQiyingCardSnapshot(card) {
+  const nodeId = card.dataset.nodeId || '';
+  const prepared = pageState.qiyingCardSnapshots.get(nodeId);
+  pageState.qiyingCardSnapshots.delete(nodeId);
+  if (!prepared || prepared.version !== (card.dataset.qiyingSnapshotVersion || '0')) return null;
+  return prepared;
+}
+
+/**
+ * 把三张服务器卡片的快照拆成多个浏览器空闲任务，避免预热本身阻塞首页。
+ *
+ * @returns {void}
+ */
+function scheduleQiyingCardWarmup() {
+  cancelQiyingCardWarmup();
+  if (!pageState.authenticated || pageState.colorTheme !== 'qiying' || pageState.qiyingNavigationPending) return;
+  const cards = [...document.querySelectorAll('.node-card[data-node-id]')];
+  let index = 0;
+  const warmNext = () => {
+    pageState.qiyingWarmupHandle = null;
+    if (!pageState.authenticated || pageState.colorTheme !== 'qiying' || pageState.qiyingNavigationPending) return;
+    const card = cards[index];
+    index += 1;
+    if (card?.isConnected) warmQiyingCardSnapshot(card);
+    if (index < cards.length) scheduleNext();
+  };
+  const scheduleNext = () => {
+    if (typeof window.requestIdleCallback === 'function') {
+      pageState.qiyingWarmupHandle = {
+        kind: 'idle',
+        id: window.requestIdleCallback(warmNext, { timeout: 900 }),
+      };
+    } else {
+      pageState.qiyingWarmupHandle = { kind: 'timeout', id: window.setTimeout(warmNext, 120) };
+    }
+  };
+  if (cards.length) scheduleNext();
+}
+
+/**
  * 提前下载并解码柒影主视觉与挥斩素材，避免第一次转场触发图片解码卡顿。
  *
- * @returns {Promise<void>} 两张主题图片完成解码或确认无法解码时兑现。
+ * @returns {Promise<void>} 三张主题图片完成解码或确认无法解码时兑现。
  */
 async function preloadQiyingAssets() {
   if (pageState.qiyingPreloadedAssets.length) return;
   const paths = [
     '/status-assets/assets/qiying-idle-v1.jpg',
     '/status-assets/assets/qiying-slash-v1.jpg',
+    '/status-assets/assets/qiying-sheath-v1.png',
   ];
   const images = paths.map((path) => {
     const image = new Image();
@@ -1156,6 +1435,45 @@ function suppressOffscreenQiyingSnapshot(source, clone) {
 }
 
 /**
+ * 使用同一组百分比坐标生成页面两半、开场实体刀光和折线裂口。
+ *
+ * 开场刀光连接折线的首尾端点，后续裂口严格沿多段折线展开，因此不同
+ * 屏幕比例下仍能保持方向一致，且裂口两边不会出现坐标偏差。
+ *
+ * @param {HTMLElement} stage - 柒影全屏转场容器。
+ * @returns {boolean} 找到两块页面裂片和刀光折线并成功配置时返回 true。
+ */
+function configureQiyingCutGeometry(stage) {
+  const leftFragment = stage.querySelector('.qiying-page-fragment-left');
+  const rightFragment = stage.querySelector('.qiying-page-fragment-right');
+  const slash = stage.querySelector('.qiying-transition-flash');
+  const cutLines = [...stage.querySelectorAll('.qiying-transition-cut polyline')];
+  if (!leftFragment || !rightFragment || !slash || cutLines.length !== 2) return false;
+
+  const toCssPoint = ([x, y]) => `${x}% ${y}%`;
+  const leftPolygon = [[0, 0], ...QIYING_CUT_PATH, [0, 100]];
+  const rightPolygon = [QIYING_CUT_PATH[0], [100, 0], [100, 100], ...QIYING_CUT_PATH.slice(1).reverse()];
+  leftFragment.style.clipPath = `polygon(${leftPolygon.map(toCssPoint).join(', ')})`;
+  rightFragment.style.clipPath = `polygon(${rightPolygon.map(toCssPoint).join(', ')})`;
+
+  const svgPoints = QIYING_CUT_PATH.map(([x, y]) => `${x * 10},${y * 10}`).join(' ');
+  cutLines.forEach((line) => line.setAttribute('points', svgPoints));
+  const [startXPercent, startYPercent] = QIYING_CUT_PATH[0];
+  const [endXPercent, endYPercent] = QIYING_CUT_PATH[QIYING_CUT_PATH.length - 1];
+  const startX = window.innerWidth * startXPercent / 100;
+  const startY = window.innerHeight * startYPercent / 100;
+  const deltaX = window.innerWidth * (endXPercent - startXPercent) / 100;
+  const deltaY = window.innerHeight * (endYPercent - startYPercent) / 100;
+  const length = Math.hypot(deltaX, deltaY);
+  const angle = -Math.atan2(deltaX, deltaY);
+  slash.style.setProperty('--qiying-slash-left', `${startX}px`);
+  slash.style.setProperty('--qiying-slash-top', `${startY}px`);
+  slash.style.setProperty('--qiying-slash-length', `${length}px`);
+  slash.style.setProperty('--qiying-slash-angle', `${angle}rad`);
+  return true;
+}
+
+/**
  * 把当前可视页面复制进斩击层的两块裂片，并同步页面背景与滚动偏移。
  *
  * @param {HTMLElement} stage - 柒影全屏转场容器。
@@ -1166,6 +1484,7 @@ function prepareQiyingPageFragments(stage) {
   const fragments = [...stage.querySelectorAll('.qiying-page-fragment')];
   const contents = [...stage.querySelectorAll('.qiying-page-fragment-content')];
   if (!source || fragments.length !== 2 || contents.length !== 2) return false;
+  if (!configureQiyingCutGeometry(stage)) return false;
   const bodyStyle = window.getComputedStyle(document.body);
   fragments.forEach((fragment) => {
     fragment.style.setProperty('--snapshot-background-color', bodyStyle.backgroundColor);
@@ -1196,21 +1515,34 @@ function prepareQiyingCardCut(stage, card) {
   const cut = stage.querySelector('#qiying-card-cut');
   const contents = [...stage.querySelectorAll('.qiying-card-slice-content')];
   if (!cut || contents.length !== 2 || rectangle.width < 1 || rectangle.height < 1) return false;
-  const slashDeltaX = rectangle.width * .72;
+  const requestedVariant = card.dataset.qiyingVariant || '';
+  const variant = QIYING_NODE_VARIANTS.includes(requestedVariant) ? requestedVariant : 'violet';
+  const geometry = {
+    violet: { topX: 14, bottomX: 86 },
+    azure: { topX: 88, bottomX: 12 },
+    crimson: { topX: 82, bottomX: 20 },
+  }[variant];
+  const slashDeltaX = rectangle.width * ((geometry.bottomX - geometry.topX) / 100);
   const slashLength = Math.hypot(slashDeltaX, rectangle.height);
   const slashAngle = Math.atan2(rectangle.height, slashDeltaX);
+  cut.dataset.variant = variant;
   cut.style.setProperty('--card-top', `${rectangle.top}px`);
   cut.style.setProperty('--card-left', `${rectangle.left}px`);
   cut.style.setProperty('--card-width', `${rectangle.width}px`);
   cut.style.setProperty('--card-height', `${rectangle.height}px`);
+  cut.style.setProperty('--card-radius', window.getComputedStyle(card).borderRadius || '24px');
   cut.style.setProperty('--card-slash-length', `${slashLength}px`);
   cut.style.setProperty('--card-slash-angle', `${slashAngle}rad`);
-  const firstClone = createQiyingVisualClone(card, 'qiying-card-snapshot');
+  cut.style.setProperty('--card-slash-left', `${geometry.topX}%`);
+  const slices = [...stage.querySelectorAll('.qiying-card-slice')];
+  slices[0]?.style.setProperty('clip-path', `polygon(0 0, ${geometry.topX}% 0, ${geometry.bottomX}% 100%, 0 100%)`);
+  slices[1]?.style.setProperty('clip-path', `polygon(${geometry.topX}% 0, 100% 0, 100% 100%, ${geometry.bottomX}% 100%)`);
+  const prepared = takeQiyingCardSnapshot(card);
+  const firstClone = prepared?.firstClone || createQiyingVisualClone(card, 'qiying-card-snapshot');
   firstClone.classList.remove('is-qiying-source-hidden');
-  const secondClone = firstClone.cloneNode(true);
+  const secondClone = prepared?.secondClone || firstClone.cloneNode(true);
   contents[0].replaceChildren(firstClone);
   contents[1].replaceChildren(secondClone);
-  card.classList.add('is-qiying-source-hidden');
   return true;
 }
 
@@ -1224,7 +1556,10 @@ function clearQiyingVisualClones(stage) {
   if (!stage) return;
   stage.querySelectorAll('.qiying-page-fragment-content, .qiying-card-slice-content').forEach((content) => content.replaceChildren());
   stage.querySelectorAll('.qiying-page-fragment').forEach((fragment) => fragment.removeAttribute('style'));
+  stage.querySelector('.qiying-transition-flash')?.removeAttribute('style');
   stage.querySelector('#qiying-card-cut')?.removeAttribute('style');
+  stage.querySelector('#qiying-card-cut')?.removeAttribute('data-variant');
+  stage.querySelectorAll('.qiying-card-slice').forEach((slice) => slice.removeAttribute('style'));
 }
 
 /**
@@ -1239,8 +1574,12 @@ function resetQiyingTransition() {
     window.clearTimeout(pageState.qiyingNavigationTimeout);
     pageState.qiyingNavigationTimeout = null;
   }
+  if (pageState.qiyingNavigationFrame !== null) {
+    window.cancelAnimationFrame(pageState.qiyingNavigationFrame);
+    pageState.qiyingNavigationFrame = null;
+  }
   const stage = document.querySelector('#qiying-transition');
-  stage?.classList.remove('is-active', 'is-revealing', 'is-theme-applied', 'is-detail');
+  stage?.classList.remove('is-active', 'is-revealing', 'is-theme-applied', 'is-detail', 'is-card-ready', 'is-card-detail');
   clearQiyingVisualClones(stage);
   pageState.qiyingActiveCard?.classList.remove('is-qiying-striking', 'is-qiying-source-hidden');
   pageState.qiyingActiveCard = null;
@@ -1269,14 +1608,14 @@ function playQiyingThemeTransition() {
   void stage.offsetWidth;
   pageState.qiyingThemeTimeouts.push(window.setTimeout(() => {
     stage.classList.add('is-revealing');
-  }, 150));
+  }, 420));
   pageState.qiyingThemeTimeouts.push(window.setTimeout(() => {
     stage.classList.add('is-theme-applied');
     applyColorTheme('qiying');
-  }, 380));
+  }, 1160));
   pageState.qiyingThemeTimeouts.push(window.setTimeout(() => {
     resetQiyingTransition();
-  }, 960));
+  }, 1300));
 }
 
 /**
@@ -1297,10 +1636,25 @@ function requestColorTheme(theme) {
 }
 
 /**
- * 在柒影主题下让当前卡片释放一道短促刀痕后进入监控详情。
+ * 标记下一张 GPU 详情页应播放一次侧身收刀入场镜头。
+ *
+ * @param {'violet'|'azure'|'crimson'} variant - 本次进入详情页的节点视觉变体。
+ * @returns {void}
+ */
+function markQiyingDetailArrival(variant) {
+  try {
+    const normalized = QIYING_NODE_VARIANTS.includes(variant) ? variant : 'violet';
+    window.sessionStorage.setItem('qiying-detail-arrival', normalized);
+  } catch (_error) {
+    // 禁用会话存储不会影响导航本身，仅跳过详情页入场动画。
+  }
+}
+
+/**
+ * 在柒影主题下从被点击卡片原位斩开断面，再进入对应节点的监控详情。
  *
  * @param {string} destination - 已通过同源路径校验的详情地址。
- * @param {HTMLElement|null} card - 触发跳转的服务器卡片。
+ * @param {HTMLElement|null} card - 触发跳转的服务器卡片，仅保留接口兼容。
  * @returns {void}
  */
 function navigateWithQiyingTransition(destination, card) {
@@ -1317,21 +1671,27 @@ function navigateWithQiyingTransition(destination, card) {
     return;
   }
   resetQiyingTransition();
-  pageState.qiyingNavigationPending = true;
-  pageState.qiyingActiveCard = card;
-  card?.classList.add('is-qiying-striking');
   if (!prepareQiyingCardCut(stage, card)) {
-    resetQiyingTransition();
     window.location.assign(safeDestination);
     return;
   }
+  pageState.qiyingNavigationPending = true;
+  pageState.qiyingActiveCard = card;
   document.body.classList.add('qiying-detail-transitioning');
-  stage.classList.add('is-detail');
-  void stage.offsetWidth;
-  pageState.qiyingNavigationTimeout = window.setTimeout(() => {
-    pageState.qiyingNavigationTimeout = null;
-    window.location.assign(safeDestination);
-  }, 860);
+  stage.classList.add('is-card-ready');
+  stage.querySelector('#qiying-card-cut')?.getBoundingClientRect();
+  pageState.qiyingNavigationFrame = window.requestAnimationFrame(() => {
+    pageState.qiyingNavigationFrame = null;
+    if (!pageState.qiyingNavigationPending) return;
+    card?.classList.add('is-qiying-source-hidden');
+    stage.classList.add('is-card-detail');
+    stage.classList.remove('is-card-ready');
+    pageState.qiyingNavigationTimeout = window.setTimeout(() => {
+      pageState.qiyingNavigationTimeout = null;
+      markQiyingDetailArrival(card?.dataset.qiyingVariant || 'violet');
+      window.location.assign(safeDestination);
+    }, 720);
+  });
 }
 
 /**

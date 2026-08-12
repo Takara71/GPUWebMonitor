@@ -164,7 +164,10 @@ class StatusProbeTests(unittest.TestCase):
         self.assertEqual(history[0]["state"], "degraded")
         self.assertEqual(latency["average_ms"], 2.5)
         self.assertEqual(latency["samples"], 2)
-        self.assertEqual(len(latency["points"]), 2)
+        self.assertEqual(latency["failed_samples"], 2)
+        self.assertEqual(latency["total_samples"], 4)
+        self.assertEqual(latency["availability"], 50.0)
+        self.assertEqual(len(latency["points"]), 4)
 
     def test_incident_reason_is_enriched_by_matching_client_diagnostic(self) -> None:
         """验证恢复后的客户端诊断能够替换模糊 TCP 错误。
@@ -427,11 +430,17 @@ class StatusProbeTests(unittest.TestCase):
 
         self.assertEqual(profile["average_ms"], 30.0)
         self.assertEqual(profile["samples"], 3)
+        self.assertEqual(profile["failed_samples"], 1)
+        self.assertEqual(profile["total_samples"], 4)
+        self.assertEqual(profile["availability"], 75.0)
         self.assertEqual(profile["bucket_seconds"], 900)
         self.assertEqual(len(profile["points"]), 2)
         self.assertEqual(profile["points"][0]["latency_ms"], 15.0)
         self.assertEqual(profile["points"][0]["samples"], 2)
         self.assertEqual(profile["points"][1]["latency_ms"], 60.0)
+        self.assertEqual(profile["points"][1]["failed_samples"], 1)
+        self.assertEqual(profile["points"][1]["availability"], 50.0)
+        self.assertEqual(profile["points"][1]["state"], "degraded")
 
     def test_run_probe_writes_public_document(self) -> None:
         """验证完整探测流程会创建数据库和公开 JSON。

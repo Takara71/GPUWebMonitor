@@ -197,7 +197,12 @@ html.theme-transition-fallback .el-select__wrapper {
 
 [data-color-theme="qiying"] body { background-color: var(--page); background-image: radial-gradient(circle at 88% 4%, color-mix(in srgb, var(--violet) 16%, transparent), transparent 27%), radial-gradient(circle at 8% 20%, color-mix(in srgb, var(--cyan) 12%, transparent), transparent 31%), repeating-linear-gradient(154deg, transparent 0 126px, color-mix(in srgb, var(--brand) 4%, transparent) 127px 129px, transparent 130px 214px); background-attachment: fixed; }
 [data-color-theme="qiying"] body::before { position: fixed; inset: 0; z-index: 0; background: radial-gradient(circle at 17% 22%, color-mix(in srgb, var(--violet) 17%, transparent) 0 1px, transparent 1.6px) 0 0 / 42px 42px, linear-gradient(116deg, transparent 0 66%, color-mix(in srgb, var(--brand) 9%, transparent) 66.1% 66.3%, transparent 66.4%); content: ""; opacity: .58; pointer-events: none; }
-[data-color-theme="qiying"] body::after { position: fixed; top: -18vh; right: 8vw; z-index: 0; width: 3px; height: 138vh; border-radius: 50%; background: linear-gradient(transparent, color-mix(in srgb, var(--brand) 28%, transparent), color-mix(in srgb, #fff 72%, var(--brand)), color-mix(in srgb, var(--brand) 36%, transparent), transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--brand) 25%, transparent); content: ""; opacity: .36; pointer-events: none; transform: rotate(-19deg); transform-origin: top; }
+[data-color-theme="qiying"] { --qiying-sheath-tone: hue-rotate(0deg) saturate(1); }
+[data-color-theme="qiying"][data-qiying-node="azure"] { --qiying-sheath-tone: hue-rotate(-34deg) saturate(1.14); }
+[data-color-theme="qiying"][data-qiying-node="crimson"] { --qiying-sheath-tone: hue-rotate(42deg) saturate(1.22); }
+[data-color-theme="qiying"] body::after { position: fixed; top: 88px; right: 0; bottom: 0; z-index: 2; width: min(55vw, 1040px); background: linear-gradient(90deg, transparent 0 9%, color-mix(in srgb, var(--page) 7%, transparent) 33%, transparent 100%), url("/status-assets/assets/qiying-sheath-v1.png") right center / cover no-repeat; content: ""; filter: var(--qiying-sheath-tone); opacity: .15; pointer-events: none; transform: translate3d(0, 0, 0) scale(1.01); transform-origin: 82% center; -webkit-mask-image: linear-gradient(90deg, transparent 0 5%, rgba(0,0,0,.36) 26%, #000 54% 100%); mask-image: linear-gradient(90deg, transparent 0 5%, rgba(0,0,0,.36) 26%, #000 54% 100%); }
+[data-theme="dark"][data-color-theme="qiying"] body::after { opacity: .23; }
+[data-color-theme="qiying"].qiying-detail-arrival body::after { animation: qiying-monitor-sheath-arrive .72s cubic-bezier(.16, .76, .18, 1) both; will-change: opacity, transform; }
 [data-color-theme="qiying"] .app-shell { position: relative; z-index: 1; }
 [data-color-theme="qiying"] .brand-mark { border: 0; border-radius: 5px 50% 5px 50%; background: linear-gradient(145deg, #171021, #7d3fd0 56%, #d8c4ff); color: #fff; box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 48%, transparent), 0 0 22px color-mix(in srgb, var(--brand) 23%, transparent); transform: rotate(-7deg); }
 [data-color-theme="qiying"] .brand-copy h1,
@@ -229,6 +234,9 @@ html.theme-transition-fallback .el-select__wrapper {
 @keyframes fight-monitor-rise { from { opacity: 0; translate: -13px 13px; } to { opacity: 1; translate: 0 0; } }
 @keyframes fight-monitor-backdrop { from { opacity: 0; transform: translateX(34px) scale(1.04); } to { opacity: .14; transform: translateX(0) scale(1); } }
 @keyframes fight-monitor-backdrop-dark { from { opacity: 0; transform: translateX(34px) scale(1.04); } to { opacity: .22; transform: translateX(0) scale(1); } }
+@keyframes qiying-monitor-sheath-arrive { 0% { opacity: 0; transform: translate3d(3.2vw, -.4vh, 0) scale(1.025); } 45% { opacity: .27; transform: translate3d(-.25vw, 0, 0) scale(1.006); } 100% { opacity: .15; transform: translate3d(0, 0, 0) scale(1.01); } }
+[data-theme="dark"][data-color-theme="qiying"].qiying-detail-arrival body::after { animation-name: qiying-monitor-sheath-arrive-dark; }
+@keyframes qiying-monitor-sheath-arrive-dark { 0% { opacity: 0; transform: translate3d(3.2vw, -.4vh, 0) scale(1.025); } 45% { opacity: .36; transform: translate3d(-.25vw, 0, 0) scale(1.006); } 100% { opacity: .23; transform: translate3d(0, 0, 0) scale(1.01); } }
 button, input, select { font: inherit; }
 [v-cloak] { display: none; }
 ::selection { background: var(--brand-soft); color: var(--ink); }

@@ -367,10 +367,11 @@ def build_latency_profile(
     since_timestamp: int,
     bucket_seconds: int = LATENCY_TREND_BUCKET_SECONDS,
 ) -> dict[str, Any]:
-    """计算节点响应时间平均值并生成轻量趋势采样。
+    """计算节点连接延迟、可用性和失败分布并生成轻量趋势采样。
 
-    仅统计成功建立连接且拥有延迟值的探测。趋势按固定时间桶聚合，避免把
-    最近 24 小时的每分钟原始记录全部发送给浏览器。
+    延迟平均值只统计成功建立连接且拥有延迟值的探测；失败连接没有有效
+    延迟值，因此单独统计为故障样本。趋势按固定时间桶聚合，避免把最近
+    24 小时的每分钟原始记录全部发送给浏览器。
 
     Args:
         connection: 状态历史数据库连接。
@@ -379,21 +380,27 @@ def build_latency_profile(
         bucket_seconds: 趋势聚合桶宽度，默认十五分钟。
 
     Returns:
-        包含平均响应时间、样本数、桶宽度和趋势点的字典。
+        包含成功平均延迟、成功/失败样本数、可用率、桶宽度和趋势点的字典。
     """
     normalized_bucket_seconds = max(int(bucket_seconds), 60)
     rows = connection.execute(
         """
         SELECT
             CAST(checked_at / ? AS INTEGER) * ? AS bucket_start,
-            AVG(latency_ms) AS average_latency,
-            COUNT(*) AS sample_count
+            AVG(
+                CASE WHEN online = 1 AND latency_ms IS NOT NULL
+                THEN latency_ms END
+            ) AS average_latency,
+            SUM(
+                CASE WHEN online = 1 AND latency_ms IS NOT NULL
+                THEN 1 ELSE 0 END
+            ) AS success_count,
+            SUM(CASE WHEN online = 0 THEN 1 ELSE 0 END) AS failed_count,
+            COUNT(*) AS total_count
         FROM checks
         WHERE
             node_id = ?
             AND checked_at >= ?
-            AND online = 1
-            AND latency_ms IS NOT NULL
         GROUP BY bucket_start
         ORDER BY bucket_start ASC
         """,
@@ -407,25 +414,65 @@ def build_latency_profile(
 
     points: list[dict[str, Any]] = []
     weighted_latency = 0.0
-    total_samples = 0
+    success_samples = 0
+    failed_samples = 0
+    all_samples = 0
     for row in rows:
-        average_latency = float(row["average_latency"])
-        sample_count = int(row["sample_count"])
+        average_latency = (
+            float(row["average_latency"])
+            if row["average_latency"] is not None
+            else None
+        )
+        success_count = int(row["success_count"] or 0)
+        failed_count = int(row["failed_count"] or 0)
+        total_count = int(row["total_count"] or 0)
+        availability = (
+            round(success_count / total_count * 100, 2)
+            if total_count
+            else None
+        )
+        state = (
+            "offline"
+            if failed_count and not success_count
+            else ("degraded" if failed_count else "online")
+        )
         points.append(
             {
                 "timestamp": int(row["bucket_start"]),
-                "latency_ms": round(average_latency, 1),
-                "samples": sample_count,
+                "latency_ms": (
+                    round(average_latency, 1)
+                    if average_latency is not None
+                    else None
+                ),
+                "samples": success_count,
+                "success_samples": success_count,
+                "failed_samples": failed_count,
+                "total_samples": total_count,
+                "availability": availability,
+                "state": state,
             }
         )
-        weighted_latency += average_latency * sample_count
-        total_samples += sample_count
+        if average_latency is not None:
+            weighted_latency += average_latency * success_count
+        success_samples += success_count
+        failed_samples += failed_count
+        all_samples += total_count
 
     return {
         "average_ms": (
-            round(weighted_latency / total_samples, 1) if total_samples else None
+            round(weighted_latency / success_samples, 1)
+            if success_samples
+            else None
         ),
-        "samples": total_samples,
+        "samples": success_samples,
+        "success_samples": success_samples,
+        "failed_samples": failed_samples,
+        "total_samples": all_samples,
+        "availability": (
+            round(success_samples / all_samples * 100, 2)
+            if all_samples
+            else None
+        ),
         "bucket_seconds": normalized_bucket_seconds,
         "points": points,
     }

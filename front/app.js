@@ -14,6 +14,8 @@ const STALE_AFTER = REFRESH_INTERVAL * 3;
 const MAX_SAMPLES = 20;
 const AUTO_REFRESH_STORAGE_KEY = 'auto-refresh-enabled';
 const COLOR_THEME_STORAGE_KEY = 'color-theme-preference';
+const QIYING_DETAIL_ARRIVAL_KEY = 'qiying-detail-arrival';
+const QIYING_NODE_VARIANTS = ['violet', 'azure', 'crimson'];
 
 const app = createApp({
   render: window.GpuMonitorRender,
@@ -114,6 +116,7 @@ const app = createApp({
     let colorThemeStorageListener = null;
     let activeThemeTransition = null;
     let themeFallbackTimer = null;
+    let qiyingArrivalTimer = null;
 
     const trendRanges = { session: { seconds: null }, '10m': { seconds: 600 }, '30m': { seconds: 1800 }, '1h': { seconds: 3600 }, '6h': { seconds: 21600 }, '12h': { seconds: 43200 } };
 
@@ -128,6 +131,21 @@ const app = createApp({
     const serverDisplayName = (server) => {
       if (!server) return '';
       return String(server.name || server.id || 'GPU node');
+    };
+
+    /**
+     * 根据当前节点标识设置柒影详情页的收刀色调。
+     *
+     * @returns {void}
+     */
+    const applyQiyingNodeVariant = () => {
+      const index = Math.max(0, servers.value.findIndex((server) => server.id === selectedServerId.value));
+      const identity = `${selectedServer.value?.id || ''} ${selectedServer.value?.name || ''}`.toLowerCase().replaceAll(' ', '');
+      let variant = QIYING_NODE_VARIANTS[index % QIYING_NODE_VARIANTS.length];
+      if (identity.includes('5090')) variant = 'violet';
+      else if (identity.includes('4090-1') || identity.includes('4090_1')) variant = 'azure';
+      else if (identity.includes('4090-2') || identity.includes('4090_2') || identity.includes('server-0')) variant = 'crimson';
+      document.documentElement.dataset.qiyingNode = variant;
     };
     const gpuList = computed(() => currentData.value?.gpu?.gpus || []);
     const sortedSystemProcesses = computed(() => {
@@ -560,6 +578,7 @@ const app = createApp({
         selectedServerId.value = servers.value.some((server) => server.id === requested)
           ? requested
           : (servers.value.some((server) => server.id === saved) ? saved : (servers.value[0]?.id || null));
+        applyQiyingNodeVariant();
         if (selectedServerId.value) {
           localStorage.setItem('selected-server-id', selectedServerId.value);
           await loadSelectedServerData('initial');
@@ -581,6 +600,7 @@ const app = createApp({
         historySamples.value = [];
       }
       localStorage.setItem('selected-server-id', selectedServerId.value);
+      applyQiyingNodeVariant();
       const url = new URL(window.location.href);
       url.searchParams.set('node', selectedServerId.value);
       window.history.replaceState(null, '', url);
@@ -598,12 +618,36 @@ const app = createApp({
       else clearRefreshTimer();
     };
 
+    /**
+     * 消费首页留下的一次性标记，并在柒影详情页播放侧身收刀入场。
+     *
+     * @returns {void}
+     */
+    const playQiyingDetailArrival = () => {
+      try {
+        const storedVariant = sessionStorage.getItem(QIYING_DETAIL_ARRIVAL_KEY);
+        sessionStorage.removeItem(QIYING_DETAIL_ARRIVAL_KEY);
+        if (!storedVariant || document.documentElement.dataset.colorTheme !== 'qiying') return;
+        document.documentElement.dataset.qiyingNode = QIYING_NODE_VARIANTS.includes(storedVariant)
+          ? storedVariant
+          : 'violet';
+      } catch (_error) {
+        return;
+      }
+      document.documentElement.classList.add('qiying-detail-arrival');
+      qiyingArrivalTimer = window.setTimeout(() => {
+        document.documentElement.classList.remove('qiying-detail-arrival');
+        qiyingArrivalTimer = null;
+      }, 760);
+    };
+
     onMounted(() => {
       const storedAutoRefresh = localStorage.getItem(AUTO_REFRESH_STORAGE_KEY);
       autoRefresh.value = storedAutoRefresh === null ? true : storedAutoRefresh === 'true';
       currentTheme.value = localStorage.getItem('theme-preference') || 'auto';
       applyTheme(currentTheme.value);
       applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY) || 'green');
+      playQiyingDetailArrival();
       const browserLocale = (navigator.language || '').toLowerCase();
       applyLocale(localStorage.getItem('locale-preference') || (browserLocale.startsWith('en') ? 'en' : browserLocale.startsWith('ja') ? 'ja' : 'zh'));
       themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -623,6 +667,8 @@ const app = createApp({
       if (themeMediaQuery && themeMediaListener) themeMediaQuery.removeEventListener('change', themeMediaListener);
       if (colorThemeStorageListener) window.removeEventListener('storage', colorThemeStorageListener);
       if (themeFallbackTimer) window.clearTimeout(themeFallbackTimer);
+      if (qiyingArrivalTimer) window.clearTimeout(qiyingArrivalTimer);
+      document.documentElement.classList.remove('qiying-detail-arrival');
       document.documentElement.classList.remove('theme-transition-fallback');
     });
 
