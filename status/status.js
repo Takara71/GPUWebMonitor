@@ -3,6 +3,7 @@ const SESSION_ENDPOINT = '/auth/session';
 const LOGIN_ENDPOINT = '/auth/login';
 const LOGOUT_ENDPOINT = '/auth/logout';
 const SSH_CONFIG_ENDPOINT = '/monitor/api/ssh-config';
+const CLIENT_PROBE_ENDPOINT = '/api/client-latency';
 const AUTO_REFRESH_SECONDS = 60;
 const LOCALE_STORAGE_KEY = 'locale-preference';
 const THEME_STORAGE_KEY = 'theme-preference';
@@ -29,14 +30,15 @@ const TRANSLATIONS = {
     fightHero: { aria: '斗魂街头格斗主题主视觉', title: '街头斗魂观测站', subtitle: '以拳为信号，让每一次计算正面交锋。', badge: '原创格斗主题 · 实时状态' },
     qiyingHero: { aria: '柒影刺客主题主视觉', title: '柒影刃域观测站', subtitle: '刀锋划开夜色，守住每一次运算的脉搏。', badge: '柒影主题 · 实时状态' },
     refresh: { loading: '正在获取状态', updating: '正在刷新', countdown: (seconds) => `刷新时间 ${seconds} 秒`, manualAria: '立即刷新状态并重置倒计时' },
-    summary: { total: '监控节点', totalHint: '全部计算服务器', online: '正常节点', onlineHint: 'FRP 与 Agent 可连接', offline: '异常节点', offlineHint: '连接超时或中断', availability: '平均可用率', availabilityHint: '最近 30 天' },
-    node: { averageLatency: '成功连接延迟', last24h: '最近 24 小时', availability: '平均运行时间', cloudHistory: '最近30天', historyAria: '最近三十天服务状态', daysAgo: '30 天前', today: '今天', online: '在线', offline: '离线', checked: (time) => `检测于 ${time}`, healthy: '运行正常', unhealthy: '连接异常', failed: '连接失败', empty: '尚未配置计算节点', tooltipAvailability: (value) => `可用率：${value}` },
+    summary: { total: '监控节点', totalHint: '全部计算服务器', online: '正常节点', onlineHint: '连接正常', offline: '异常节点', offlineHint: '连接超时或中断', availability: '平均可用率', availabilityHint: '最近 30 天' },
+    node: { averageLatency: '节点延迟', last24h: '最近 24 小时', availability: '平均运行时间', cloudHistory: '最近30天', historyAria: '最近三十天服务状态', daysAgo: '30 天前', today: '今天', online: '在线', offline: '离线', checked: (time) => `检测于 ${time}`, healthy: '运行正常', unhealthy: '连接异常', failed: '连接失败', empty: '尚未配置计算节点', tooltipAvailability: (value) => `可用率：${value}` },
     resource: { cpu: 'CPU', memory: '内存', gpu: 'GPU', openAria: '打开详细资源监控' },
     ssh: { copyAria: '复制 SSH 连接指令', copied: '已复制', failed: '复制失败' },
-    latency: { title: '连接质量趋势', average: '成功连接平均延迟', availability: '24 小时探测可用率', failures: '连接失败', failureCount: (value) => `${value} 次`, openAria: '查看连接质量趋势', closeAria: '关闭连接质量趋势', chartAria: '最近二十四小时连接延迟与失败时段图', empty: '最近 24 小时暂无连接探测样本', successLegend: '成功连接延迟', degradedLegend: '部分探测失败', offlineLegend: '完全无法连接', successfulOnly: '延迟仅统计成功建立连接的探测；无法连接单独显示为故障区间。', unavailable: '无法连接', bucketAvailability: (value) => `该时段可用率：${value}` },
+    clientProbe: { button: '本机延迟测试', openAria: '测试本机到 GPU 节点的延迟', closeAria: '关闭本机延迟测试', title: '本机延迟测试', description: '当前设备 ↔ GPU 节点', average: '平均', p95: 'P95', minimum: '最小', maximum: '最大', jitter: '抖动', failed: '测试失败', unauthorized: '登录已失效，请重新登录。' },
+    latency: { title: '节点质量', average: '平均延迟', p95: 'P95 延迟', maximum: '最大延迟', jitter: '平均抖动', availability: '24 小时探测可用率', failures: '连接失败', failureCount: (value) => `${value} 次`, openAria: '查看节点质量趋势', closeAria: '关闭节点质量趋势', chartAria: '最近二十四小时节点延迟与失败时段图', empty: '最近 24 小时暂无节点延迟样本', successLegend: '成功连接', degradedLegend: '部分探测失败', offlineLegend: '完全无法连接', unavailable: '无法连接', bucketAvailability: (value) => `该时段可用率：${value}`, bucketMaximum: (value) => `该时段最大延迟：${value}` },
     incident: { title: '故障记录', count: (value) => `${value} 条`, empty: '近期无故障记录', ongoing: (duration) => `持续中 · ${duration}` },
     auth: { loginResource: '登录查看资源占用', viewResource: '查看资源占用', secureAccess: '安全访问', title: '用户登录', close: '关闭登录框', description: '登录以查看GPU服务器的详细资源和进程信息', username: '用户名', password: '密码', remember: '保持登录 30 天', submit: '安全登录', submitting: '正在验证…', invalid: '用户名或密码错误。', locked: (seconds) => `尝试次数过多，请在 ${seconds} 秒后重试。`, failed: '登录服务暂时不可用，请稍后重试。' },
-    footer: { description: '实验室基础设施状态 · 详细资源信息需要登录', waiting: '等待首次检测', checked: (time) => `最后检测：${time}` },
+    footer: { description: '实验室基础设施状态 · 详细资源信息需要登录', icpPlaceholder: 'ICP备案信息（待补充）', waiting: '等待首次检测', checked: (time) => `最后检测：${time}` },
     errors: { load: (message) => `暂时无法读取状态数据：${message}` },
     duration: { seconds: (value) => `${value} 秒`, minutes: (value) => `${value} 分钟`, hours: (value) => `${value} 小时`, days: (value) => `${value} 天` },
   },
@@ -47,14 +49,15 @@ const TRANSLATIONS = {
     fightHero: { aria: 'Fighting Soul street tournament theme key visual', title: 'Fighting Soul Observatory', subtitle: 'Every signal throws a strike. Every computation enters the ring.', badge: 'Original fight theme · Live status' },
     qiyingHero: { aria: 'Seven assassin theme key visual', title: 'Seven · Blade Signal', subtitle: 'A blade parts the night and guards every pulse of computation.', badge: 'Seven theme · Live status' },
     refresh: { loading: 'Loading status', updating: 'Refreshing', countdown: (seconds) => `Refresh in ${seconds}s`, manualAria: 'Refresh status now and reset the countdown' },
-    summary: { total: 'Monitored nodes', totalHint: 'All compute servers', online: 'Healthy nodes', onlineHint: 'FRP and Agent are reachable', offline: 'Affected nodes', offlineHint: 'Timed out or disconnected', availability: 'Average uptime', availabilityHint: 'Last 30 days' },
-    node: { averageLatency: 'Successful connection latency', last24h: 'Last 24 hours', availability: 'Average uptime', cloudHistory: 'Last 30 days', historyAria: 'Service status for the last thirty days', daysAgo: '30 days ago', today: 'Today', online: 'Online', offline: 'Offline', checked: (time) => `Checked ${time}`, healthy: 'Operating normally', unhealthy: 'Connection unavailable', failed: 'Connection failed', empty: 'No compute node is configured', tooltipAvailability: (value) => `Availability: ${value}` },
+    summary: { total: 'Monitored nodes', totalHint: 'All compute servers', online: 'Healthy nodes', onlineHint: 'Connection healthy', offline: 'Affected nodes', offlineHint: 'Timed out or disconnected', availability: 'Average uptime', availabilityHint: 'Last 30 days' },
+    node: { averageLatency: 'Node latency', last24h: 'Last 24 hours', availability: 'Average uptime', cloudHistory: 'Last 30 days', historyAria: 'Service status for the last thirty days', daysAgo: '30 days ago', today: 'Today', online: 'Online', offline: 'Offline', checked: (time) => `Checked ${time}`, healthy: 'Operating normally', unhealthy: 'Connection unavailable', failed: 'Connection failed', empty: 'No compute node is configured', tooltipAvailability: (value) => `Availability: ${value}` },
     resource: { cpu: 'CPU', memory: 'Memory', gpu: 'GPU', openAria: 'Open detailed resource monitoring' },
     ssh: { copyAria: 'Copy SSH connection command', copied: 'Copied', failed: 'Copy failed' },
-    latency: { title: 'Connection quality trend', average: 'Successful connection latency', availability: '24-hour probe availability', failures: 'Failed connections', failureCount: (value) => `${value}`, openAria: 'View connection quality trend', closeAria: 'Close connection quality trend', chartAria: 'Connection latency and failed periods for the last 24 hours', empty: 'No connection probes in the last 24 hours', successLegend: 'Successful latency', degradedLegend: 'Partial failures', offlineLegend: 'Unreachable', successfulOnly: 'Latency includes successful connections only; unreachable probes are shown as outage periods.', unavailable: 'Unreachable', bucketAvailability: (value) => `Period availability: ${value}` },
+    clientProbe: { button: 'Local latency test', openAria: 'Test latency from this device to GPU nodes', closeAria: 'Close local latency test', title: 'Local latency test', description: 'This device ↔ GPU node', average: 'Average', p95: 'P95', minimum: 'Minimum', maximum: 'Maximum', jitter: 'Jitter', failed: 'Test failed', unauthorized: 'Your session has expired. Please sign in again.' },
+    latency: { title: 'Node quality', average: 'Average latency', p95: 'P95 latency', maximum: 'Maximum latency', jitter: 'Average jitter', availability: '24-hour probe availability', failures: 'Failed connections', failureCount: (value) => `${value}`, openAria: 'View node quality', closeAria: 'Close node quality', chartAria: 'Node latency and failures for the last 24 hours', empty: 'No node latency samples in the last 24 hours', successLegend: 'Successful connection', degradedLegend: 'Partial failures', offlineLegend: 'Unreachable', unavailable: 'Unreachable', bucketAvailability: (value) => `Period availability: ${value}`, bucketMaximum: (value) => `Period maximum: ${value}` },
     incident: { title: 'Incidents', count: (value) => `${value}`, empty: 'No recent incidents', ongoing: (duration) => `Ongoing · ${duration}` },
     auth: { loginResource: 'Sign in for resource usage', viewResource: 'View resource usage', secureAccess: 'SECURE ACCESS', title: 'User Sign In', close: 'Close sign-in dialog', description: 'Sign in to view detailed GPU server resources and process information.', username: 'Username', password: 'Password', remember: 'Keep me signed in for 30 days', submit: 'Secure sign in', submitting: 'Verifying…', invalid: 'Incorrect username or password.', locked: (seconds) => `Too many attempts. Try again in ${seconds} seconds.`, failed: 'The sign-in service is temporarily unavailable.' },
-    footer: { description: 'Lab infrastructure status · detailed resource data requires sign-in', waiting: 'Waiting for the first check', checked: (time) => `Last check: ${time}` },
+    footer: { description: 'Lab infrastructure status · detailed resource data requires sign-in', icpPlaceholder: 'ICP filing information (pending)', waiting: 'Waiting for the first check', checked: (time) => `Last check: ${time}` },
     errors: { load: (message) => `Unable to load status data: ${message}` },
     duration: { seconds: (value) => `${value}s`, minutes: (value) => `${value}m`, hours: (value) => `${value}h`, days: (value) => `${value}d` },
   },
@@ -65,14 +68,15 @@ const TRANSLATIONS = {
     fightHero: { aria: '闘魂ストリートファイトテーマのキービジュアル', title: 'ストリート闘魂観測所', subtitle: 'すべての信号が拳を放ち、すべての計算がリングへ。', badge: 'オリジナル格闘テーマ · ライブ状態' },
     qiyingHero: { aria: '柒影アサシンテーマのキービジュアル', title: '柒影・刃域観測所', subtitle: '刃が夜を裂き、すべての演算の鼓動を守る。', badge: '柒影テーマ · ライブ状態' },
     refresh: { loading: '状態を取得中', updating: '更新中', countdown: (seconds) => `更新まで ${seconds} 秒`, manualAria: '状態を今すぐ更新してカウントダウンをリセット' },
-    summary: { total: '監視ノード', totalHint: 'すべての計算サーバー', online: '正常ノード', onlineHint: 'FRP と Agent に接続可能', offline: '異常ノード', offlineHint: 'タイムアウトまたは切断', availability: '平均稼働率', availabilityHint: '過去 30 日間' },
-    node: { averageLatency: '成功接続の遅延', last24h: '過去 24 時間', availability: '平均稼働時間', cloudHistory: '過去 30 日間', historyAria: '過去三十日間のサービス状態', daysAgo: '30 日前', today: '今日', online: 'オンライン', offline: 'オフライン', checked: (time) => `${time} に確認`, healthy: '正常稼働', unhealthy: '接続異常', failed: '接続失敗', empty: '計算ノードが設定されていません', tooltipAvailability: (value) => `稼働率：${value}` },
+    summary: { total: '監視ノード', totalHint: 'すべての計算サーバー', online: '正常ノード', onlineHint: '接続正常', offline: '異常ノード', offlineHint: 'タイムアウトまたは切断', availability: '平均稼働率', availabilityHint: '過去 30 日間' },
+    node: { averageLatency: 'ノード遅延', last24h: '過去 24 時間', availability: '平均稼働時間', cloudHistory: '過去 30 日間', historyAria: '過去三十日間のサービス状態', daysAgo: '30 日前', today: '今日', online: 'オンライン', offline: 'オフライン', checked: (time) => `${time} に確認`, healthy: '正常稼働', unhealthy: '接続異常', failed: '接続失敗', empty: '計算ノードが設定されていません', tooltipAvailability: (value) => `稼働率：${value}` },
     resource: { cpu: 'CPU', memory: 'メモリ', gpu: 'GPU', openAria: '詳細なリソース監視を開く' },
     ssh: { copyAria: 'SSH 接続コマンドをコピー', copied: 'コピー済み', failed: 'コピー失敗' },
-    latency: { title: '接続品質の推移', average: '成功接続の平均遅延', availability: '24 時間のプローブ稼働率', failures: '接続失敗', failureCount: (value) => `${value} 回`, openAria: '接続品質の推移を表示', closeAria: '接続品質の推移を閉じる', chartAria: '過去 24 時間の接続遅延と障害時間帯', empty: '過去 24 時間の接続プローブはありません', successLegend: '成功接続の遅延', degradedLegend: '一部失敗', offlineLegend: '接続不能', successfulOnly: '遅延は成功した接続のみを集計し、接続不能は障害時間帯として表示します。', unavailable: '接続不能', bucketAvailability: (value) => `時間帯の稼働率：${value}` },
+    clientProbe: { button: '端末遅延テスト', openAria: 'この端末から GPU ノードまでの遅延を測定', closeAria: '端末遅延テストを閉じる', title: '端末遅延テスト', description: 'この端末 ↔ GPU ノード', average: '平均', p95: 'P95', minimum: '最小', maximum: '最大', jitter: 'ジッター', failed: 'テスト失敗', unauthorized: 'ログインの有効期限が切れました。再度ログインしてください。' },
+    latency: { title: 'ノード品質', average: '平均遅延', p95: 'P95 遅延', maximum: '最大遅延', jitter: '平均ジッター', availability: '24 時間のプローブ稼働率', failures: '接続失敗', failureCount: (value) => `${value} 回`, openAria: 'ノード品質を表示', closeAria: 'ノード品質を閉じる', chartAria: '過去 24 時間のノード遅延と障害時間帯', empty: '過去 24 時間のノード遅延サンプルはありません', successLegend: '接続成功', degradedLegend: '一部失敗', offlineLegend: '接続不能', unavailable: '接続不能', bucketAvailability: (value) => `時間帯の稼働率：${value}`, bucketMaximum: (value) => `時間帯の最大遅延：${value}` },
     incident: { title: '障害履歴', count: (value) => `${value} 件`, empty: '最近の障害はありません', ongoing: (duration) => `継続中 · ${duration}` },
     auth: { loginResource: 'ログインして使用状況を表示', viewResource: 'リソース使用状況を表示', secureAccess: '安全なアクセス', title: 'ユーザーログイン', close: 'ログイン画面を閉じる', description: 'ログインすると、GPU サーバーの詳細なリソースとプロセス情報を確認できます。', username: 'ユーザー名', password: 'パスワード', remember: '30 日間ログイン状態を保持', submit: '安全にログイン', submitting: '確認中…', invalid: 'ユーザー名またはパスワードが正しくありません。', locked: (seconds) => `試行回数が多すぎます。${seconds} 秒後に再試行してください。`, failed: 'ログインサービスは一時的に利用できません。' },
-    footer: { description: 'ラボ基盤の状態 · 詳細なリソース情報にはログインが必要です', waiting: '最初の確認を待っています', checked: (time) => `最終確認：${time}` },
+    footer: { description: 'ラボ基盤の状態 · 詳細なリソース情報にはログインが必要です', icpPlaceholder: 'ICP 届出情報（準備中）', waiting: '最初の確認を待っています', checked: (time) => `最終確認：${time}` },
     errors: { load: (message) => `状態データを読み込めません：${message}` },
     duration: { seconds: (value) => `${value} 秒`, minutes: (value) => `${value} 分`, hours: (value) => `${value} 時間`, days: (value) => `${value} 日` },
   },
@@ -83,6 +87,12 @@ const pageState = {
   resolvedTheme: 'light',
   colorTheme: 'green',
   activeThemeTransition: null,
+  activeThemeAnimation: null,
+  themeTransitionWarmupPromise: null,
+  themeTransitionWarmed: false,
+  themeTransitionReady: false,
+  themeNeedsRetinaCompensation: true,
+  themeTogglePending: false,
   themeFallbackTimer: null,
   refreshTimeout: null,
   countdownInterval: null,
@@ -90,10 +100,7 @@ const pageState = {
   loading: false,
   authenticated: false,
   pendingDetailUrl: '',
-  pendingDetailFighter: '',
   pendingDetailNodeId: '',
-  fighterNavigationPending: false,
-  fighterNavigationTimeout: null,
   qiyingThemeTimeouts: [],
   qiyingNavigationTimeout: null,
   qiyingNavigationFrame: null,
@@ -726,7 +733,6 @@ function applyTheme(theme, persist = true) {
  */
 function applyColorTheme(theme, persist = true) {
   const normalized = COLOR_THEMES.includes(theme) ? theme : 'green';
-  if (normalized !== 'fighter') resetFighterTransition();
   if (normalized !== 'qiying') resetQiyingTransition();
   pageState.colorTheme = normalized;
   document.documentElement.dataset.colorTheme = normalized;
@@ -741,12 +747,111 @@ function applyColorTheme(theme, persist = true) {
 }
 
 /**
+ * 解析明暗切换动画的圆心与覆盖半径。
+ *
+ * 始终使用按钮的实时布局中心，避免 macOS Chromium 首次创建 View
+ * Transition 伪元素时使用事件坐标或尚未同步的 CSS 自定义属性。
+ *
+ * @param {MouseEvent|null} event - 主题按钮的点击事件。
+ * @param {string} fallbackSelector - 无有效点击坐标时用于定位按钮的选择器。
+ * @returns {{originX: number, originY: number, radius: number}} 动画几何信息。
+ */
+function resolveThemeTransitionGeometry(event, fallbackSelector) {
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+  const trigger = event?.currentTarget instanceof Element
+    ? event.currentTarget
+    : document.querySelector(fallbackSelector);
+  const bounds = trigger?.getBoundingClientRect?.();
+  const originX = bounds ? bounds.left + bounds.width / 2 : viewportWidth - 42;
+  const originY = bounds ? bounds.top + bounds.height / 2 : 42;
+  const radius = Math.hypot(
+    Math.max(originX, viewportWidth - originX),
+    Math.max(originY, viewportHeight - originY),
+  );
+  return { originX, originY, radius };
+}
+
+/**
+ * 判断当前环境是否为存在首次根快照尺寸异常的 macOS Chromium。
+ *
+ * @returns {boolean} macOS 上的 Chrome、Edge 或 Chromium 返回 true。
+ */
+function isMacChromium() {
+  const userAgent = navigator.userAgent || '';
+  return /Macintosh|Mac OS X/i.test(userAgent)
+    && /(?:Chrome|Chromium|Edg)\//i.test(userAgent);
+}
+
+/**
+ * 等待浏览器完成一次布局与合成帧。
+ *
+ * @returns {Promise<void>} 下一帧绘制前兑现的 Promise。
+ */
+function waitForThemePaint() {
+  return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+}
+
+/**
+ * 在 macOS Chromium 中预先创建一次不可见的根快照。
+ *
+ * 该浏览器组合首次创建根 View Transition 时偶尔会采用尚未稳定的页面
+ * 合成尺寸，导致首个圆形揭示被拉伸。字体、图片和布局稳定后先完成一次
+ * 1ms 的同内容快照，可让用户第一次实际切换直接使用正确的合成层。
+ *
+ * @returns {Promise<void>} 预热完成或安全回退已经确定时兑现的 Promise。
+ */
+function warmThemeTransitionEngine() {
+  if (pageState.themeTransitionWarmed) return Promise.resolve();
+  if (pageState.themeTransitionWarmupPromise) return pageState.themeTransitionWarmupPromise;
+  if (!isMacChromium() || typeof document.startViewTransition !== 'function') {
+    pageState.themeTransitionWarmed = true;
+    pageState.themeTransitionReady = typeof document.startViewTransition === 'function';
+    return Promise.resolve();
+  }
+
+  pageState.themeTransitionWarmupPromise = (async () => {
+    if (document.readyState !== 'complete') {
+      await new Promise((resolve) => window.addEventListener('load', resolve, { once: true }));
+    }
+    if (document.fonts?.ready) await document.fonts.ready.catch(() => {});
+    await waitForThemePaint();
+    await waitForThemePaint();
+    const root = document.documentElement;
+    root.classList.add('theme-transition-warmup');
+    try {
+      const transition = document.startViewTransition(() => {
+        root.classList.add('theme-transition-probe');
+      });
+      await transition.finished;
+      pageState.themeTransitionReady = true;
+    } catch (_) {
+      pageState.themeTransitionReady = false;
+    } finally {
+      root.classList.remove('theme-transition-warmup', 'theme-transition-probe');
+      pageState.themeTransitionWarmed = true;
+      pageState.themeTransitionWarmupPromise = null;
+    }
+  })();
+  return pageState.themeTransitionWarmupPromise;
+}
+
+/**
  * 在浅色与深色主题之间执行双向圆形揭示切换。
  *
  * @param {MouseEvent|null} event - 主题按钮点击事件，用于计算圆形动画的起点。
  * @returns {void}
  */
 function toggleTheme(event = null) {
+  if (pageState.themeTogglePending) return;
+  if (isMacChromium() && !pageState.themeTransitionWarmed) {
+    pageState.themeTogglePending = true;
+    void warmThemeTransitionEngine().finally(() => {
+      pageState.themeTogglePending = false;
+      toggleTheme(null);
+    });
+    return;
+  }
   const nextTheme = pageState.resolvedTheme === 'dark' ? 'light' : 'dark';
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const root = document.documentElement;
@@ -757,7 +862,8 @@ function toggleTheme(event = null) {
     return;
   }
 
-  if (typeof document.startViewTransition !== 'function') {
+  if (typeof document.startViewTransition !== 'function'
+      || (isMacChromium() && !pageState.themeTransitionReady)) {
     if (pageState.themeFallbackTimer !== null) window.clearTimeout(pageState.themeFallbackTimer);
     root.classList.add('theme-transition-fallback');
     window.requestAnimationFrame(applyNextTheme);
@@ -768,23 +874,56 @@ function toggleTheme(event = null) {
     return;
   }
 
-  const bounds = event?.currentTarget?.getBoundingClientRect?.();
-  const originX = bounds ? bounds.left + bounds.width / 2 : window.innerWidth - 42;
-  const originY = bounds ? bounds.top + bounds.height / 2 : 42;
-  const radius = Math.hypot(
-    Math.max(originX, window.innerWidth - originX),
-    Math.max(originY, window.innerHeight - originY),
-  );
+  const geometry = resolveThemeTransitionGeometry(event, '#theme-button');
+  // macOS Chromium 的第一次真实根快照使用设备像素，后续快照恢复为 CSS 像素。
+  // 因此 Retina 比例只能补偿一次；持续补偿会让第二次及后续动画偏到右上角。
+  const needsRetinaCompensation = isMacChromium()
+    && pageState.themeNeedsRetinaCompensation;
+  const snapshotScale = needsRetinaCompensation
+    ? Math.max(1, window.devicePixelRatio || 1)
+    : 1;
+  pageState.themeNeedsRetinaCompensation = false;
+  const originX = geometry.originX * snapshotScale;
+  const originY = geometry.originY * snapshotScale;
+  const radius = geometry.radius * snapshotScale;
   root.style.setProperty('--theme-transition-x', `${originX}px`);
   root.style.setProperty('--theme-transition-y', `${originY}px`);
   root.style.setProperty('--theme-transition-radius', `${radius}px`);
   pageState.activeThemeTransition?.skipTransition?.();
+  pageState.activeThemeAnimation?.cancel?.();
   const transition = document.startViewTransition(applyNextTheme);
   pageState.activeThemeTransition = transition;
+  transition.ready
+    .then(() => {
+      const startClip = `circle(0px at ${originX}px ${originY}px)`;
+      const endClip = `circle(${radius + 2}px at ${originX}px ${originY}px)`;
+      try {
+        pageState.activeThemeAnimation = root.animate(
+          { clipPath: [startClip, endClip] },
+          {
+            duration: 480,
+            easing: 'cubic-bezier(.22, .72, .18, 1)',
+            fill: 'both',
+            pseudoElement: '::view-transition-new(root)',
+          },
+        );
+      } catch (error) {
+        root.classList.add('theme-view-transition-css');
+        return Promise.resolve(error);
+      }
+      return pageState.activeThemeAnimation.finished;
+    })
+    .catch(() => {})
+    .finally(() => {
+      pageState.activeThemeAnimation = null;
+    });
   transition.finished
     .catch(() => {})
     .finally(() => {
-      if (pageState.activeThemeTransition === transition) pageState.activeThemeTransition = null;
+      if (pageState.activeThemeTransition === transition) {
+        pageState.activeThemeTransition = null;
+        root.classList.remove('theme-view-transition-css');
+      }
     });
 }
 
@@ -873,6 +1012,14 @@ function renderLatencyChart(node) {
   document.querySelector('#latency-dialog-average').textContent = average === null
     ? '—'
     : `${average.toFixed(1)} ms`;
+  ['p95', 'maximum', 'jitter'].forEach((metric) => {
+    const numeric = Number(profile[`${metric}_ms`]);
+    document.querySelector(`#latency-dialog-${metric}`).textContent = (
+      profile[`${metric}_ms`] === null
+      || profile[`${metric}_ms`] === undefined
+      || !Number.isFinite(numeric)
+    ) ? '—' : `${numeric.toFixed(1)} ms`;
+  });
   document.querySelector('#latency-dialog-availability').textContent = formatAvailability(profile.availability);
   document.querySelector('#latency-dialog-failures').textContent = translate(
     'latency.failureCount',
@@ -886,12 +1033,16 @@ function renderLatencyChart(node) {
       const latency = point.latency_ms === null || point.latency_ms === undefined
         ? null
         : Number(point.latency_ms);
+      const maximum = point.maximum_ms === null || point.maximum_ms === undefined
+        ? latency
+        : Number(point.maximum_ms);
       const successSamples = Number(point.success_samples ?? point.samples) || 0;
       const failedSamples = Number(point.failed_samples) || 0;
       const totalSamples = Number(point.total_samples) || (successSamples + failedSamples);
       return {
         timestamp: Number(point.timestamp),
         latency: Number.isFinite(latency) && latency >= 0 ? latency : null,
+        maximum: Number.isFinite(maximum) && maximum >= 0 ? maximum : null,
         successSamples,
         failedSamples,
         totalSamples,
@@ -917,7 +1068,7 @@ function renderLatencyChart(node) {
   const endTimestamp = Number(pageState.latestDocument?.generated_at_unix) || Math.floor(Date.now() / 1000);
   const startTimestamp = endTimestamp - 86400;
   const successfulLatencies = points
-    .map((point) => point.latency)
+    .flatMap((point) => [point.latency, point.maximum])
     .filter((latency) => latency !== null);
   const maximumLatency = Math.max(10, ...successfulLatencies);
   const yMaximum = Math.ceil(maximumLatency / 10) * 10;
@@ -999,6 +1150,19 @@ function renderLatencyChart(node) {
       chart.appendChild(marker);
       return;
     }
+    if (point.maximum !== null && point.maximum > point.latency + 0.5) {
+      const peak = createSvgElement('line', {
+        x1: xFor(point.timestamp),
+        y1: yFor(point.latency),
+        x2: xFor(point.timestamp),
+        y2: yFor(point.maximum),
+        class: 'latency-chart-peak',
+      });
+      const peakTitle = createSvgElement('title');
+      peakTitle.textContent = `${formatTimestamp(point.timestamp)} · ${translate('latency.bucketMaximum', `${point.maximum.toFixed(1)} ms`)}`;
+      peak.appendChild(peakTitle);
+      chart.appendChild(peak);
+    }
     const marker = createSvgElement('circle', {
       cx: xFor(point.timestamp),
       cy: yFor(point.latency),
@@ -1009,7 +1173,10 @@ function renderLatencyChart(node) {
     const availability = Number.isFinite(point.availability)
       ? formatAvailability(point.availability)
       : '—';
-    title.textContent = `${formatTimestamp(point.timestamp)} · ${point.latency.toFixed(1)} ms\n${translate('latency.bucketAvailability', availability)} · ${translate('latency.failureCount', point.failedSamples)}`;
+    const maximumText = point.maximum === null
+      ? ''
+      : `\n${translate('latency.bucketMaximum', `${point.maximum.toFixed(1)} ms`)}`;
+    title.textContent = `${formatTimestamp(point.timestamp)} · ${point.latency.toFixed(1)} ms${maximumText}\n${translate('latency.bucketAvailability', availability)} · ${translate('latency.failureCount', point.failedSamples)}`;
     marker.appendChild(title);
     chart.appendChild(marker);
   });
@@ -1026,6 +1193,144 @@ function openLatencyDialog(node) {
   renderLatencyChart(node);
   const dialog = document.querySelector('#latency-dialog');
   if (!dialog.open) dialog.showModal();
+}
+
+/**
+ * 计算一组浏览器端往返样本的平均、P95、极值和平均抖动。
+ *
+ * @param {Array<number>} samples - 成功请求的毫秒耗时数组。
+ * @returns {{average: number, p95: number, minimum: number, maximum: number, jitter: number|null}|null} 汇总指标；没有样本时返回 null。
+ */
+function summarizeClientLatency(samples) {
+  if (!samples.length) return null;
+  const sorted = [...samples].sort((first, second) => first - second);
+  const p95Index = Math.max(0, Math.ceil(sorted.length * 0.95) - 1);
+  const differences = samples.slice(1).map((value, index) => Math.abs(value - samples[index]));
+  return {
+    average: samples.reduce((total, value) => total + value, 0) / samples.length,
+    p95: sorted[p95Index],
+    minimum: sorted[0],
+    maximum: sorted.at(-1),
+    jitter: differences.length
+      ? differences.reduce((total, value) => total + value, 0) / differences.length
+      : null,
+  };
+}
+
+/**
+ * 对单个 GPU 节点执行五次受会话保护的浏览器端 HTTP 往返探测。
+ *
+ * @param {object} node - 公共状态文档中的节点。
+ * @returns {Promise<{node: object, samples: Array<number>, failed: number, unauthorized: boolean}>} 节点样本、失败次数与登录状态。
+ */
+async function probeClientNode(node) {
+  const nodeId = String(node?.id || '');
+  if (!/^[a-zA-Z0-9_-]+$/.test(nodeId)) {
+    return { node, samples: [], failed: 5, unauthorized: false };
+  }
+  const samples = [];
+  let failed = 0;
+  for (let index = 0; index < 5; index += 1) {
+    const startedAt = performance.now();
+    try {
+      const response = await fetch(`${CLIENT_PROBE_ENDPOINT}/${encodeURIComponent(nodeId)}?t=${Date.now()}-${index}`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+      });
+      if (response.status === 401) return { node, samples, failed: failed + 1, unauthorized: true };
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const documentData = await response.json();
+      const probeData = documentData?.data;
+      if (!probeData || (
+        probeData.probe !== 'ok'
+        && (typeof probeData.node_id !== 'string' || typeof probeData.classification !== 'string')
+      )) {
+        throw new Error('invalid_probe');
+      }
+      samples.push(performance.now() - startedAt);
+    } catch (_) {
+      failed += 1;
+    }
+  }
+  return { node, samples, failed, unauthorized: false };
+}
+
+/**
+ * 把一台节点的本机探测结果渲染为不含 HTML 注入的指标卡。
+ *
+ * @param {{node: object, samples: Array<number>, failed: number, unauthorized: boolean}} result - 单节点探测结果。
+ * @returns {HTMLElement} 已填充的结果卡元素。
+ */
+function createClientProbeResult(result) {
+  const card = document.createElement('article');
+  card.className = 'client-probe-result';
+  const heading = document.createElement('div');
+  const title = document.createElement('strong');
+  title.textContent = nodeDisplayName(result.node);
+  const sampleState = document.createElement('small');
+  sampleState.textContent = `${result.samples.length}/5`;
+  heading.append(title, sampleState);
+  card.appendChild(heading);
+  const summary = summarizeClientLatency(result.samples);
+  if (!summary) {
+    const failed = document.createElement('p');
+    failed.className = 'client-probe-failed';
+    failed.textContent = translate(result.unauthorized ? 'clientProbe.unauthorized' : 'clientProbe.failed');
+    card.appendChild(failed);
+    return card;
+  }
+  const metrics = [
+    ['average', summary.average],
+    ['p95', summary.p95],
+    ['minimum', summary.minimum],
+    ['maximum', summary.maximum],
+    ['jitter', summary.jitter],
+  ];
+  const metricGrid = document.createElement('dl');
+  metrics.forEach(([key, value]) => {
+    const wrapper = document.createElement('div');
+    const label = document.createElement('dt');
+    const metricValue = document.createElement('dd');
+    label.textContent = translate(`clientProbe.${key}`);
+    metricValue.textContent = value === null ? '—' : `${value.toFixed(1)} ms`;
+    wrapper.append(label, metricValue);
+    metricGrid.appendChild(wrapper);
+  });
+  card.appendChild(metricGrid);
+  return card;
+}
+
+/**
+ * 并行测试当前浏览器到全部 GPU 节点的完整应用层往返时间。
+ *
+ * @returns {Promise<void>} 全部节点结果完成渲染时兑现。
+ */
+async function runClientLatencyTest() {
+  if (!pageState.authenticated) {
+    applyAuthenticationState(false);
+    return;
+  }
+  const resultsContainer = document.querySelector('#client-probe-results');
+  resultsContainer.classList.add('is-loading');
+  resultsContainer.replaceChildren();
+  const nodes = Array.isArray(pageState.latestDocument?.nodes) ? pageState.latestDocument.nodes : [];
+  const results = await Promise.all(nodes.map((node) => probeClientNode(node)));
+  results.forEach((result) => resultsContainer.appendChild(createClientProbeResult(result)));
+  if (results.some((result) => result.unauthorized)) applyAuthenticationState(false);
+  resultsContainer.classList.remove('is-loading');
+}
+
+/**
+ * 打开仅登录用户可见的本机延迟测试框并开始采样。
+ *
+ * @returns {void}
+ */
+function openClientLatencyDialog() {
+  if (!pageState.authenticated) return;
+  const dialog = document.querySelector('#client-probe-dialog');
+  if (!dialog.open) dialog.showModal();
+  void runClientLatencyTest();
 }
 
 /**
@@ -1193,6 +1498,8 @@ function applyAuthenticationState(authenticated) {
   pageState.sshRequestVersion += 1;
   if (!authenticated) pageState.sshCommands = {};
   document.querySelector('#logout-button').hidden = !authenticated;
+  document.querySelector('#client-latency-button').hidden = !authenticated;
+  if (!authenticated) document.querySelector('#client-probe-dialog')?.close();
   document.querySelectorAll('.node-card').forEach((card) => {
     card.querySelector('.detail-link').hidden = authenticated;
     card.querySelector('.resource-preview').hidden = !authenticated;
@@ -1233,24 +1540,6 @@ function openLoginDialog() {
   document.querySelector('#login-message').hidden = true;
   if (!dialog.open) dialog.showModal();
   window.setTimeout(() => document.querySelector('#login-username').focus(), 0);
-}
-
-/**
- * 清除一次斗魂详情转场留下的动画状态，兼容浏览器后退缓存恢复。
- *
- * @returns {void}
- */
-function resetFighterTransition() {
-  if (pageState.fighterNavigationTimeout !== null) {
-    window.clearTimeout(pageState.fighterNavigationTimeout);
-    pageState.fighterNavigationTimeout = null;
-  }
-  const stage = document.querySelector('#fighter-duel-effects');
-  stage?.classList.remove('is-attacking');
-  stage?.removeAttribute('data-attacker');
-  document.body.classList.remove('fighter-transitioning');
-  document.body.removeAttribute('data-fighter-attacker');
-  pageState.fighterNavigationPending = false;
 }
 
 /**
@@ -1612,10 +1901,10 @@ function playQiyingThemeTransition() {
   pageState.qiyingThemeTimeouts.push(window.setTimeout(() => {
     stage.classList.add('is-theme-applied');
     applyColorTheme('qiying');
-  }, 1160));
+  }, 1080));
   pageState.qiyingThemeTimeouts.push(window.setTimeout(() => {
     resetQiyingTransition();
-  }, 1300));
+  }, 1460));
 }
 
 /**
@@ -1698,53 +1987,15 @@ function navigateWithQiyingTransition(destination, card) {
  * 按当前定制主题选择详情页转场；普通主题直接进入详情。
  *
  * @param {string} destination - 已通过同源路径校验的详情地址。
- * @param {string} fighter - 斗魂主题中的角色代码。
  * @param {HTMLElement|null} card - 触发跳转的服务器卡片。
  * @returns {void}
  */
-function navigateWithColorThemeTransition(destination, fighter, card) {
-  if (pageState.colorTheme === 'fighter') {
-    navigateWithFighterTransition(destination, fighter);
-    return;
-  }
+function navigateWithColorThemeTransition(destination, card) {
   if (pageState.colorTheme === 'qiying') {
     navigateWithQiyingTransition(destination, card);
     return;
   }
   window.location.assign(safeMonitorPath(destination) || '/monitor/');
-}
-
-/**
- * 在斗魂主题下播放指定角色发波动画，然后进入安全的监控详情地址。
- *
- * @param {string} destination - 已通过同源路径校验的详情地址。
- * @param {string} fighter - 隆、肯或豪鬼对应的角色代码。
- * @returns {void}
- */
-function navigateWithFighterTransition(destination, fighter) {
-  const safeDestination = safeMonitorPath(destination) || '/monitor/';
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (pageState.colorTheme !== 'fighter' || !FIGHTER_NODE_ORDER.includes(fighter) || reducedMotion) {
-    window.location.assign(safeDestination);
-    return;
-  }
-  if (pageState.fighterNavigationPending) return;
-  const stage = document.querySelector('#fighter-duel-effects');
-  if (!stage) {
-    window.location.assign(safeDestination);
-    return;
-  }
-  pageState.fighterNavigationPending = true;
-  stage.dataset.attacker = fighter;
-  document.body.dataset.fighterAttacker = fighter;
-  document.body.classList.add('fighter-transitioning');
-  stage.classList.remove('is-attacking');
-  void stage.offsetWidth;
-  stage.classList.add('is-attacking');
-  pageState.fighterNavigationTimeout = window.setTimeout(() => {
-    pageState.fighterNavigationTimeout = null;
-    window.location.assign(safeDestination);
-  }, 900);
 }
 
 /**
@@ -1756,18 +2007,16 @@ function navigateWithFighterTransition(destination, fighter) {
 function handleDetailLinkClick(event) {
   const destination = safeMonitorPath(event.currentTarget.href) || '/monitor/';
   const card = event.currentTarget.closest('.node-card');
-  const fighter = card?.dataset.fighter || '';
   if (!pageState.authenticated) {
     event.preventDefault();
     pageState.pendingDetailUrl = destination;
-    pageState.pendingDetailFighter = fighter;
     pageState.pendingDetailNodeId = card?.dataset.nodeId || '';
     openLoginDialog();
     return;
   }
-  if (pageState.colorTheme === 'fighter' || pageState.colorTheme === 'qiying') {
+  if (pageState.colorTheme === 'qiying') {
     event.preventDefault();
-    navigateWithColorThemeTransition(destination, fighter, card);
+    navigateWithColorThemeTransition(destination, card);
   }
 }
 
@@ -1805,7 +2054,7 @@ async function submitLogin(event) {
     const pendingCard = Array.from(document.querySelectorAll('.node-card')).find(
       (card) => card.dataset.nodeId === pageState.pendingDetailNodeId,
     ) || null;
-    navigateWithColorThemeTransition(destination, pageState.pendingDetailFighter, pendingCard);
+    navigateWithColorThemeTransition(destination, pendingCard);
   } catch (error) {
     message.textContent = error.message || translate('auth.failed');
     message.hidden = false;
@@ -1840,6 +2089,7 @@ async function initializePage() {
   applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'auto', false);
   applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY) || 'green', false);
   applyLocale(localStorage.getItem(LOCALE_STORAGE_KEY) || defaultLocale, false);
+  void warmThemeTransitionEngine();
   document.querySelectorAll('[data-locale]').forEach((button) => button.addEventListener('click', () => applyLocale(button.dataset.locale)));
   document.querySelectorAll('button[data-color-theme]').forEach((button) => button.addEventListener('click', () => {
     document.querySelector('#color-theme-picker').open = false;
@@ -1849,6 +2099,12 @@ async function initializePage() {
   qiyingThemeButton?.addEventListener('pointerenter', () => void preloadQiyingAssets(), { once: true });
   qiyingThemeButton?.addEventListener('focus', () => void preloadQiyingAssets(), { once: true });
   document.querySelector('#refresh-button').addEventListener('click', refreshNow);
+  document.querySelector('#client-latency-button').addEventListener('click', openClientLatencyDialog);
+  const clientProbeDialog = document.querySelector('#client-probe-dialog');
+  document.querySelector('#client-probe-close').addEventListener('click', () => clientProbeDialog.close());
+  clientProbeDialog.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+  });
   document.querySelector('#theme-button').addEventListener('click', toggleTheme);
   document.querySelector('#logout-button').addEventListener('click', () => void logout());
   document.querySelector('#login-close').addEventListener('click', () => document.querySelector('#login-dialog').close());
@@ -1891,7 +2147,6 @@ async function initializePage() {
     else openLoginDialog();
   }
   window.addEventListener('pageshow', () => {
-    resetFighterTransition();
     resetQiyingTransition();
     applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'auto', false);
     applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY) || 'green', false);

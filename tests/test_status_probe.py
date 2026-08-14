@@ -6,6 +6,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import unittest.mock
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -115,6 +116,185 @@ class StatusProbeTests(unittest.TestCase):
         self.assertFalse(offline_result.online)
         self.assertIn(offline_result.error, {"连接被拒绝", "连接失败"})
 
+    def test_probe_node_measures_authenticated_agent_roundtrip(self) -> None:
+        """验证 Agent 回显探测会校验响应并统计完整 HTTP 往返。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        node = status_probe.NodeConfig(
+            "node",
+            "节点",
+            "127.0.0.1",
+            15101,
+            "/monitor/",
+            probe_url="http://127.0.0.1:15101/api/probe",
+        )
+        response = unittest.mock.MagicMock()
+        response.read.return_value = (
+            b'{"data":{"node_id":"5090","classification":"healthy"}}'
+        )
+        response.__enter__.return_value = response
+        with unittest.mock.patch.object(
+            status_probe.urllib.request,
+            "urlopen",
+            return_value=response,
+        ) as urlopen:
+            result = status_probe.probe_node(node, 1, "secret-token")
+
+        self.assertTrue(result.online)
+        self.assertIsNotNone(result.latency_ms)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("Authorization"), "Bearer secret-token")
+
+    def test_probe_node_rejects_missing_agent_token(self) -> None:
+        """验证端到端探测缺少私有 Token 时不会退化为本地 TCP 延迟。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        node = status_probe.NodeConfig(
+            "node",
+            "节点",
+            "127.0.0.1",
+            15101,
+            "/monitor/",
+            probe_url="http://127.0.0.1:15101/api/probe",
+        )
+
+        result = status_probe.probe_node(node, 1, None)
+
+        self.assertFalse(result.online)
+        self.assertEqual(result.error, "节点探测未配置")
+
+    def test_public_incidents_hide_internal_diagnostic_fields(self) -> None:
+        """验证公开故障记录不会暴露内部链路实现和原始诊断字段。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        public_incidents = status_probe.build_public_incidents(
+            [
+                {
+                    "started_at": 100,
+                    "ended_at": 160,
+                    "duration_seconds": 60,
+                    "reason": "中转服务控制链路异常",
+                    "raw_reason": "连接被拒绝",
+                    "diagnostic_classification": "frp_control_plane_degraded",
+                    "diagnostic_scope": "shared",
+                    "correlated_nodes": ["node-a", "node-b"],
+                }
+            ]
+        )
+
+        self.assertEqual(
+            public_incidents,
+            [
+                {
+                    "started_at": 100,
+                    "ended_at": 160,
+                    "duration_seconds": 60,
+                    "reason": "中转服务控制链路异常",
+                }
+            ],
+        )
+
+    def test_public_incidents_migrate_legacy_implementation_wording(self) -> None:
+        """验证历史故障文案在公开输出时会迁移为中性节点描述。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        public_incidents = status_probe.build_public_incidents(
+            [
+                {
+                    "started_at": 100,
+                    "ended_at": 160,
+                    "duration_seconds": 60,
+                    "reason": "端到端探测失败",
+                },
+                {
+                    "started_at": 200,
+                    "ended_at": 260,
+                    "duration_seconds": 60,
+                    "reason": "节点 FRP 控制会话异常",
+                },
+            ]
+        )
+
+        self.assertEqual(public_incidents[0]["reason"], "节点探测失败")
+        self.assertEqual(public_incidents[1]["reason"], "节点连接会话异常")
+
+    def test_database_migration_separates_legacy_and_end_to_end_latency(self) -> None:
+        """验证升级后旧本机 TCP 延迟不会混入新的端到端趋势。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        now = int(datetime.now().timestamp())
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "status.db"
+            with sqlite3.connect(database_path) as legacy_connection:
+                legacy_connection.execute(
+                    """
+                    CREATE TABLE checks (
+                        node_id TEXT NOT NULL,
+                        checked_at INTEGER NOT NULL,
+                        online INTEGER NOT NULL,
+                        latency_ms REAL,
+                        error TEXT,
+                        PRIMARY KEY (node_id, checked_at)
+                    )
+                    """
+                )
+                legacy_connection.execute(
+                    "INSERT INTO checks VALUES (?, ?, ?, ?, ?)",
+                    ("node", now - 60, 1, 0.5, None),
+                )
+            connection = status_probe.open_database(str(database_path))
+            try:
+                status_probe.record_results(
+                    connection,
+                    [
+                        status_probe.ProbeResult(
+                            "node",
+                            True,
+                            42.0,
+                            None,
+                            now,
+                            "end_to_end",
+                        )
+                    ],
+                    30,
+                )
+                profile = status_probe.build_latency_profile(
+                    connection,
+                    "node",
+                    now - 300,
+                    bucket_seconds=60,
+                )
+            finally:
+                connection.close()
+
+        self.assertEqual(profile["average_ms"], 42.0)
+        self.assertEqual(profile["samples"], 1)
+
     def test_history_and_incidents_match_recorded_checks(self) -> None:
         """验证可用率、状态条和故障区间使用相同检查记录。
 
@@ -163,6 +343,9 @@ class StatusProbeTests(unittest.TestCase):
         self.assertEqual(incidents[0]["duration_seconds"], 120)
         self.assertEqual(history[0]["state"], "degraded")
         self.assertEqual(latency["average_ms"], 2.5)
+        self.assertEqual(latency["p95_ms"], 3.0)
+        self.assertEqual(latency["maximum_ms"], 3.0)
+        self.assertEqual(latency["jitter_ms"], 1.0)
         self.assertEqual(latency["samples"], 2)
         self.assertEqual(latency["failed_samples"], 2)
         self.assertEqual(latency["total_samples"], 4)
@@ -275,7 +458,7 @@ class StatusProbeTests(unittest.TestCase):
 
         enriched = status_probe.enrich_incidents(incidents, diagnostic, None)
 
-        self.assertEqual(enriched[0]["reason"], "节点 FRP 控制会话异常")
+        self.assertEqual(enriched[0]["reason"], "节点连接会话异常")
         self.assertEqual(
             enriched[0]["diagnostic_classification"],
             "node_frpc_session_failure",
@@ -350,7 +533,7 @@ class StatusProbeTests(unittest.TestCase):
                     "started_at": 5_000,
                     "ended_at": 5_060,
                     "duration_seconds": 60,
-                    "reason": "节点 FRP 控制会话异常",
+                    "reason": "节点连接会话异常",
                     "diagnostic_classification": "node_frpc_session_failure",
                 }
             ],
@@ -359,7 +542,7 @@ class StatusProbeTests(unittest.TestCase):
                     "started_at": 5_000,
                     "ended_at": 5_060,
                     "duration_seconds": 60,
-                    "reason": "FRP 服务端口或端口策略异常",
+                    "reason": "中转服务端口或端口策略异常",
                     "diagnostic_classification": "frp_port_or_policy",
                 }
             ],
@@ -368,7 +551,7 @@ class StatusProbeTests(unittest.TestCase):
                     "started_at": 5_060,
                     "ended_at": 5_120,
                     "duration_seconds": 60,
-                    "reason": "FRP 服务端口或端口策略异常",
+                    "reason": "中转服务端口或端口策略异常",
                     "diagnostic_classification": "frp_port_or_policy",
                 }
             ],
@@ -429,6 +612,9 @@ class StatusProbeTests(unittest.TestCase):
             )
 
         self.assertEqual(profile["average_ms"], 30.0)
+        self.assertEqual(profile["p95_ms"], 60.0)
+        self.assertEqual(profile["maximum_ms"], 60.0)
+        self.assertEqual(profile["jitter_ms"], 25.0)
         self.assertEqual(profile["samples"], 3)
         self.assertEqual(profile["failed_samples"], 1)
         self.assertEqual(profile["total_samples"], 4)
@@ -480,7 +666,7 @@ class StatusProbeTests(unittest.TestCase):
         self.assertEqual(document["summary"]["online"], 1)
         self.assertEqual(stored_document["nodes"][0]["status"], "online")
         self.assertEqual(stored_document["nodes"][0]["detail_url"], "/monitor/?node=node")
-        self.assertEqual(stored_document["version"], 2)
+        self.assertEqual(stored_document["version"], 3)
         self.assertGreaterEqual(stored_document["nodes"][0]["latency_24h"]["samples"], 1)
 
 

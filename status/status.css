@@ -55,6 +55,7 @@
 * { box-sizing: border-box; }
 html { overflow-x: hidden; }
 body { margin: 0; min-width: 320px; overflow-x: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 15px; line-height: 1.5; }
+html.theme-transition-probe body { opacity: .99999; }
 button, input, a { font: inherit; }
 button { color: inherit; }
 
@@ -67,12 +68,29 @@ button { color: inherit; }
   ::view-transition-new(root) {
     mix-blend-mode: normal;
   }
+  html.theme-transition-warmup::view-transition-group(root) {
+    animation-duration: 1ms !important;
+  }
+  html.theme-transition-warmup::view-transition-old(root),
+  html.theme-transition-warmup::view-transition-new(root) {
+    animation: none !important;
+  }
   ::view-transition-old(root) {
-    animation: theme-surface-out 320ms ease both;
+    z-index: 1;
+    animation: none;
   }
   ::view-transition-new(root) {
-    animation: theme-surface-reveal 480ms cubic-bezier(.22, .72, .18, 1) both;
+    z-index: 2;
+    animation: none;
   }
+  html.theme-view-transition-css::view-transition-new(root) {
+    animation: theme-circle-reveal-css 480ms cubic-bezier(.22, .72, .18, 1) both;
+  }
+}
+
+@keyframes theme-circle-reveal-css {
+  from { -webkit-clip-path: circle(0 at var(--theme-transition-x) var(--theme-transition-y)); clip-path: circle(0 at var(--theme-transition-x) var(--theme-transition-y)); }
+  to { -webkit-clip-path: circle(var(--theme-transition-radius) at var(--theme-transition-x) var(--theme-transition-y)); clip-path: circle(var(--theme-transition-radius) at var(--theme-transition-x) var(--theme-transition-y)); }
 }
 
 html.theme-transition-fallback,
@@ -97,16 +115,6 @@ html.theme-transition-fallback footer,
 html.theme-transition-fallback .login-dialog,
 html.theme-transition-fallback .latency-dialog {
   transition: background-color 440ms ease, border-color 440ms ease, color 360ms ease, box-shadow 440ms ease, opacity 440ms ease, filter 440ms ease;
-}
-
-@keyframes theme-surface-out {
-  from { opacity: 1; }
-  to { opacity: .72; }
-}
-
-@keyframes theme-surface-reveal {
-  from { clip-path: circle(0 at var(--theme-transition-x) var(--theme-transition-y)); }
-  to { clip-path: circle(var(--theme-transition-radius) at var(--theme-transition-x) var(--theme-transition-y)); }
 }
 
 .page-shell { width: min(1260px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 30px; }
@@ -247,8 +255,10 @@ html.theme-transition-fallback .latency-dialog {
 .resource-preview.is-unavailable:not(.has-resource-data) .resource-meter span { width: 0 !important; }
 .resource-preview-arrow { color: var(--green); font-size: 20px; font-weight: 750; }
 .loading-card { grid-column: 1 / -1; padding: 48px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--muted); text-align: center; }
-footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 34px; padding: 18px 4px; color: var(--muted); font-size: 12px; }
+footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; margin-top: 34px; padding: 18px 4px; color: var(--muted); font-size: 12px; }
 footer > div span { display: block; }
+.icp-record-placeholder { display: block; min-height: 1em; margin-top: 5px; text-align: left; }
+#footer-time { justify-self: end; text-align: right; }
 
 .login-dialog { width: min(440px, calc(100% - 28px)); padding: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--surface-raised); color: var(--text); box-shadow: var(--dialog-shadow); }
 .login-dialog::backdrop { background: rgba(8, 18, 32, 0.54); backdrop-filter: blur(6px); }
@@ -271,6 +281,29 @@ footer > div span { display: block; }
 .login-submit:hover { background: var(--green-hover); }
 .login-submit:disabled { cursor: wait; opacity: .65; }
 
+.client-latency-button { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 15px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text); cursor: pointer; font-weight: 650; }
+.client-latency-button:hover { border-color: var(--green); color: var(--green); }
+.client-latency-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.client-latency-button[hidden] { display: none; }
+.client-probe-dialog { width: min(860px, calc(100% - 28px)); padding: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--surface-raised); color: var(--text); box-shadow: var(--dialog-shadow); }
+.client-probe-dialog::backdrop { background: rgba(8, 18, 32, .54); backdrop-filter: blur(6px); }
+.client-probe-panel { padding: 28px 30px 30px; }
+.client-probe-results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 150px; margin-top: 22px; }
+.client-probe-results.is-loading { border-radius: 16px; background: linear-gradient(100deg, var(--surface-soft) 30%, color-mix(in srgb, var(--green) 10%, var(--surface-soft)) 50%, var(--surface-soft) 70%); background-size: 240% 100%; animation: loading-sweep 1.2s linear infinite; }
+.client-probe-result { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft); }
+.client-probe-result > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.client-probe-result > div small { color: var(--muted); }
+.client-probe-result dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; margin: 18px 0 0; }
+.client-probe-result dl div { min-width: 0; }
+.client-probe-result dt { color: var(--muted); font-size: 11px; }
+.client-probe-result dd { margin: 4px 0 0; font-size: 16px; font-weight: 680; }
+.client-probe-failed { margin: 28px 0 0; color: var(--red); }
+
+@keyframes loading-sweep {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
 .latency-dialog { width: min(880px, calc(100% - 28px)); padding: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--surface-raised); color: var(--text); box-shadow: var(--dialog-shadow); }
 .latency-dialog::backdrop { background: rgba(8, 18, 32, 0.54); backdrop-filter: blur(6px); }
 .latency-dialog-panel { padding: 28px 30px 30px; }
@@ -290,6 +323,7 @@ footer > div span { display: block; }
 .latency-chart-line { fill: none; stroke: var(--green); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 .latency-chart-point { fill: var(--surface-raised); stroke: var(--green); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .latency-chart-point.is-degraded { fill: var(--yellow); stroke: var(--surface-raised); stroke-width: 1.5; }
+.latency-chart-peak { stroke: color-mix(in srgb, var(--green) 58%, transparent); stroke-linecap: round; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .latency-failure-band { pointer-events: all; }
 .latency-failure-band.is-degraded { fill: color-mix(in srgb, var(--yellow) 16%, transparent); }
 .latency-failure-band.is-offline { fill: color-mix(in srgb, var(--red) 17%, transparent); }
@@ -395,37 +429,6 @@ footer > div span { display: block; }
 :root[data-color-theme="fighter"] .page-shell { isolation: isolate; position: relative; z-index: 2; }
 :root[data-color-theme="fighter"] .page-shell::before { position: absolute; inset: 0 -20px; z-index: -1; background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 90%, transparent), var(--bg) 7% 93%, color-mix(in srgb, var(--bg) 90%, transparent)); box-shadow: -24px 0 38px color-mix(in srgb, var(--bg) 48%, transparent), 24px 0 38px color-mix(in srgb, var(--bg) 48%, transparent); content: ""; pointer-events: none; }
 
-.fighter-duel-stage { display: none; }
-:root[data-color-theme="fighter"] .fighter-duel-stage { isolation: isolate; position: fixed; inset: 0; z-index: 1; display: block; overflow: hidden; pointer-events: none; }
-:root[data-color-theme="fighter"] .fighter-duel-stage::before { position: absolute; inset: 0; z-index: -3; background: url("/status-assets/assets/toushin-duel-bg-v1.jpg") center / cover no-repeat; content: ""; opacity: .76; filter: saturate(1.08) contrast(1.04) brightness(.82); }
-:root[data-color-theme="fighter"] .fighter-duel-stage::after { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, transparent 0 19%, color-mix(in srgb, var(--bg) 38%, transparent) 27%, color-mix(in srgb, var(--bg) 91%, transparent) 38% 62%, color-mix(in srgb, var(--bg) 38%, transparent) 73%, transparent 81%), linear-gradient(180deg, color-mix(in srgb, var(--bg) 18%, transparent), transparent 24% 78%, color-mix(in srgb, var(--bg) 24%, transparent)); content: ""; }
-:root[data-theme="dark"][data-color-theme="fighter"] .fighter-duel-stage::before { opacity: .9; filter: saturate(1.16) contrast(1.08) brightness(.68); }
-.fighter-duel-effects { display: none; }
-:root[data-color-theme="fighter"] .fighter-duel-effects { position: fixed; inset: 0; z-index: 160; display: block; overflow: hidden; pointer-events: none; }
-
-.fighter-aura { position: absolute; z-index: 1; opacity: 0; mix-blend-mode: screen; filter: blur(7px); }
-.fighter-aura-ryu { bottom: -8%; left: -7%; width: 45%; height: 66%; background: radial-gradient(ellipse at 36% 62%, rgba(220, 253, 255, .96), rgba(32, 211, 255, .52) 22%, rgba(22, 88, 255, .12) 48%, transparent 70%); }
-.fighter-aura-ken { top: -8%; left: -6%; width: 44%; height: 61%; background: radial-gradient(ellipse at 38% 44%, rgba(255, 248, 212, .98), rgba(255, 112, 21, .57) 23%, rgba(239, 27, 16, .12) 50%, transparent 72%); }
-.fighter-aura-akuma { top: 10%; right: -8%; width: 47%; height: 74%; background: radial-gradient(ellipse at 61% 48%, rgba(255, 224, 255, .9), rgba(181, 35, 255, .52) 24%, rgba(35, 0, 72, .15) 52%, transparent 72%); }
-.fighter-attack-wave { --wave: #58dfff; --wave-core: #f4ffff; position: absolute; z-index: 3; width: 82px; height: 58px; border-radius: 48% 52% 54% 46%; background: radial-gradient(circle at 58% 50%, var(--wave-core) 0 10%, var(--wave) 24%, color-mix(in srgb, var(--wave) 52%, transparent) 49%, transparent 72%); box-shadow: 0 0 15px var(--wave), 0 0 42px color-mix(in srgb, var(--wave) 72%, transparent), -26px 0 38px color-mix(in srgb, var(--wave) 38%, transparent); opacity: 0; filter: saturate(1.25); }
-.fighter-attack-wave::before, .fighter-attack-wave::after { position: absolute; top: 50%; right: 48%; width: 96px; height: 3px; border-radius: 999px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--wave) 76%, transparent)); box-shadow: 0 -13px 0 color-mix(in srgb, var(--wave) 34%, transparent), 0 14px 0 color-mix(in srgb, var(--wave) 24%, transparent); content: ""; transform: translateY(-50%) rotate(-8deg); }
-.fighter-attack-wave::after { width: 70px; transform: translateY(-50%) rotate(11deg); }
-.fighter-attack-wave b { position: absolute; inset: 12px 18px; border: 2px solid color-mix(in srgb, var(--wave-core) 84%, transparent); border-radius: 50%; box-shadow: inset 0 0 12px var(--wave-core); animation: fight-wave-spin .24s linear infinite; }
-.fighter-attack-wave-ryu { --wave: #39dfff; --wave-core: #f2ffff; top: 61%; left: 24%; }
-.fighter-attack-wave-ken { --wave: #ff681f; --wave-core: #fff7c9; top: 33%; left: 25%; width: 90px; height: 62px; }
-.fighter-attack-wave-akuma { --wave: #a22bff; --wave-core: #f7d9ff; top: 53%; right: 25%; width: 94px; height: 64px; transform: scaleX(-1); }
-.fighter-impact { position: absolute; left: 50%; z-index: 4; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 0 22px 8px var(--impact-color, #fff), 0 0 82px 26px color-mix(in srgb, var(--impact-color, #fff) 52%, transparent); opacity: 0; transform: translate(-50%, -50%); }
-.fighter-duel-effects[data-attacker="ryu"] .fighter-impact { --impact-color: #39dfff; top: 62%; }
-.fighter-duel-effects[data-attacker="ken"] .fighter-impact { --impact-color: #ff681f; top: 35%; }
-.fighter-duel-effects[data-attacker="akuma"] .fighter-impact { --impact-color: #a22bff; top: 55%; }
-.fighter-duel-effects.is-attacking[data-attacker="ryu"] .fighter-aura-ryu,
-.fighter-duel-effects.is-attacking[data-attacker="ken"] .fighter-aura-ken,
-.fighter-duel-effects.is-attacking[data-attacker="akuma"] .fighter-aura-akuma { animation: fight-character-charge .86s cubic-bezier(.18, .72, .2, 1) both; }
-.fighter-duel-effects.is-attacking[data-attacker="ryu"] .fighter-attack-wave-ryu,
-.fighter-duel-effects.is-attacking[data-attacker="ken"] .fighter-attack-wave-ken { animation: fight-wave-right .86s cubic-bezier(.18, .68, .16, 1) both; }
-.fighter-duel-effects.is-attacking[data-attacker="akuma"] .fighter-attack-wave-akuma { animation: fight-wave-left .86s cubic-bezier(.18, .68, .16, 1) both; }
-.fighter-duel-effects.is-attacking .fighter-impact { animation: fight-wave-impact .86s ease-out both; }
-:root[data-color-theme="fighter"] body.fighter-transitioning .page-shell { animation: fight-ui-impact .86s ease-out both; }
 :root[data-color-theme="fighter"] .topbar { margin-bottom: 24px; animation: fight-top-drop .62s cubic-bezier(.16, .82, .22, 1) both; }
 :root[data-color-theme="fighter"] .brand strong,
 :root[data-color-theme="fighter"] .node-heading h2 { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "PingFang SC", sans-serif; letter-spacing: .045em; }
@@ -492,15 +495,47 @@ footer > div span { display: block; }
 :root[data-color-theme="fighter"] .login-submit:hover { background: linear-gradient(105deg, #1738db, #5a18d2 53%, #c90072); }
 :root[data-color-theme="fighter"] .latency-chart-line { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--green) 55%, transparent)); }
 
-.fighter-wave-badge { display: none; }
-:root[data-color-theme="fighter"] .fighter-wave-badge { --badge-wave: #39dfff; --badge-core: #efffff; position: absolute; top: -13px; right: 92px; z-index: 5; display: block; width: 58px; height: 30px; border: 1px solid color-mix(in srgb, var(--badge-wave) 74%, #fff); border-radius: 50%; background: radial-gradient(circle at 62% 50%, var(--badge-core) 0 8%, var(--badge-wave) 28%, color-mix(in srgb, var(--badge-wave) 32%, transparent) 58%, transparent 72%); box-shadow: 0 0 12px color-mix(in srgb, var(--badge-wave) 54%, transparent); transform: skewX(-9deg); }
-:root[data-color-theme="fighter"] .fighter-wave-badge::before { position: absolute; top: 50%; right: 64%; width: 46px; height: 2px; background: linear-gradient(90deg, transparent, var(--badge-wave)); box-shadow: 0 -7px 0 color-mix(in srgb, var(--badge-wave) 34%, transparent), 0 7px 0 color-mix(in srgb, var(--badge-wave) 26%, transparent); content: ""; transform: translateY(-50%); }
-:root[data-color-theme="fighter"] .fighter-wave-badge i { position: absolute; inset: 7px 12px 7px 18px; border: 1px solid var(--badge-core); border-radius: 50%; animation: fight-badge-energy 2.2s linear infinite; }
-:root[data-color-theme="fighter"] .node-card[data-fighter="ken"] .fighter-wave-badge { --badge-wave: #ff681f; --badge-core: #fff5bc; }
-:root[data-color-theme="fighter"] .node-card[data-fighter="akuma"] .fighter-wave-badge { --badge-wave: #a22bff; --badge-core: #f7d9ff; transform: scaleX(-1) skewX(-9deg); }
-:root[data-color-theme="fighter"] body[data-fighter-attacker="ryu"] .node-card[data-fighter="ryu"] .fighter-wave-badge,
-:root[data-color-theme="fighter"] body[data-fighter-attacker="ken"] .node-card[data-fighter="ken"] .fighter-wave-badge,
-:root[data-color-theme="fighter"] body[data-fighter-attacker="akuma"] .node-card[data-fighter="akuma"] .fighter-wave-badge { animation: fight-badge-release .86s ease-out both; }
+.fighter-character-badge { display: none; }
+:root[data-color-theme="fighter"] .fighter-character-badge {
+  --fighter-name: "RYU";
+  --fighter-accent: #3e70ff;
+  --fighter-position: -245px -12px;
+  position: absolute;
+  top: -25px;
+  right: 86px;
+  z-index: 5;
+  display: block;
+  width: 78px;
+  height: 88px;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--fighter-accent) 72%, #fff);
+  background: #080916;
+  box-shadow: 5px 5px 0 color-mix(in srgb, var(--fighter-accent) 64%, transparent), 0 10px 24px rgba(4, 5, 15, .28);
+  clip-path: polygon(10% 0, 100% 0, 90% 88%, 66% 100%, 0 100%, 0 12%);
+  pointer-events: none;
+}
+:root[data-color-theme="fighter"] .fighter-character-badge i {
+  position: absolute;
+  inset: 0;
+  background: url("/status-assets/assets/toushin-fight-lab-v1.webp") var(--fighter-position) / 460px auto no-repeat;
+  content: "";
+  filter: saturate(1.08) contrast(1.06);
+}
+:root[data-color-theme="fighter"] .fighter-character-badge::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 3px 7px 5px;
+  background: linear-gradient(90deg, rgba(5, 6, 16, .96), color-mix(in srgb, var(--fighter-accent) 80%, rgba(5, 6, 16, .92)));
+  color: #fff;
+  content: var(--fighter-name);
+  font: 900 9px/1 Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  letter-spacing: .14em;
+  text-align: right;
+}
+:root[data-color-theme="fighter"] .node-card[data-fighter="ken"] .fighter-character-badge { --fighter-name: "KEN"; --fighter-accent: #ff5b22; --fighter-position: -165px -55px; }
+:root[data-color-theme="fighter"] .node-card[data-fighter="akuma"] .fighter-character-badge { --fighter-name: "AKUMA"; --fighter-accent: #9e35ef; --fighter-position: -305px -38px; }
 
 /* 柒影：静态角色素材配合纯 CSS 刀痕、撕裂、碎片与气场，避免视频和持续 Canvas。 */
 :root[data-color-theme="qiying"] body { background-color: var(--bg); background-image: radial-gradient(circle at 82% 5%, color-mix(in srgb, var(--qiying-violet) 17%, transparent), transparent 28%), radial-gradient(circle at 8% 26%, color-mix(in srgb, var(--qiying-blue) 12%, transparent), transparent 30%), repeating-linear-gradient(154deg, transparent 0 118px, color-mix(in srgb, var(--qiying-violet) 4%, transparent) 119px 121px, transparent 122px 208px); background-attachment: fixed; }
@@ -848,7 +883,7 @@ footer > div span { display: block; }
 @keyframes qiying-fast-flash { 0% { opacity: 0; transform: rotate(var(--qiying-slash-angle)) translateY(-6vh) scaleY(.18); } 30% { opacity: 1; } 72% { opacity: .92; transform: rotate(var(--qiying-slash-angle)) translateY(0) scaleY(1); } 100% { opacity: 0; transform: rotate(var(--qiying-slash-angle)) translateY(2vh) scaleY(1); } }
 @keyframes qiying-cut-layer { 0% { clip-path: inset(0 0 100% 0); opacity: 0; } 9% { opacity: 1; } 28%, 82% { clip-path: inset(0 0 0 0); opacity: 1; } 100% { clip-path: inset(0 0 0 0); opacity: 0; } }
 @keyframes qiying-fast-void { 0% { opacity: 0; } 12%, 86% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes qiying-fast-character { 0% { opacity: 0; transform: translate3d(4vw, -2vh, 0) scale(1.08); } 12%, 86% { opacity: 1; } 42% { transform: translate3d(-.8vw, 0, 0) scale(1); } 100% { opacity: 0; transform: translate3d(-1vw, .5vh, 0) scale(1.02); } }
+@keyframes qiying-fast-character { 0% { opacity: 0; filter: blur(5px) brightness(1.26); transform: translate3d(4vw, -2vh, 0) scale(1.08); } 12% { opacity: 1; } 42% { filter: none; transform: translate3d(-.8vw, 0, 0) scale(1); } 64% { opacity: 1; filter: none; } 100% { opacity: 0; filter: blur(4px) brightness(.72); transform: translate3d(-1vw, .5vh, 0) scale(1.02); } }
 @keyframes qiying-fold-tear-left { 0%, 10% { transform: translate3d(0, 0, 0) rotateY(0) rotateZ(0); } 42% { transform: translate3d(-18vw, -2vh, 34px) rotateY(-8deg) rotateZ(-1.2deg); } 100% { transform: translate3d(-86vw, -6vh, 48px) rotateY(-12deg) rotateZ(-3.2deg); filter: brightness(.72) drop-shadow(22px 24px 28px rgba(0, 0, 0, .36)); } }
 @keyframes qiying-fold-tear-right { 0%, 10% { transform: translate3d(0, 0, 0) rotateY(0) rotateZ(0); } 42% { transform: translate3d(18vw, 2vh, -16px) rotateY(7deg) rotateZ(1.2deg); } 100% { transform: translate3d(86vw, 6vh, -24px) rotateY(10deg) rotateZ(3.2deg); filter: brightness(.72) drop-shadow(-22px -24px 28px rgba(0, 0, 0, .36)); } }
 @keyframes qiying-eye-single-flash { 0%, 72%, 76%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--qiying-eye-rotate)) scaleX(.32); } 73.2% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--qiying-eye-rotate)) scaleX(1.08); } 74.8% { opacity: .5; transform: translate(-50%, -50%) rotate(var(--qiying-eye-rotate)) scaleX(.76); } }
@@ -876,14 +911,6 @@ footer > div span { display: block; }
 @keyframes fight-title-hit { 0% { opacity: 0; transform: translateX(-42px) skewX(-12deg); } 74% { opacity: 1; transform: translateX(5px) skewX(-5deg); } 100% { opacity: 1; transform: translateX(0) skewX(0); } }
 @keyframes fight-card-enter { from { opacity: 0; translate: -12px 12px; } to { opacity: 1; translate: 0 0; } }
 @keyframes fight-slash-pass { 0%, 9%, 100% { opacity: 0; translate: -180px 0; } 12% { opacity: .9; } 24% { opacity: 0; translate: 290px 0; } }
-@keyframes fight-character-charge { 0% { opacity: 0; transform: scale(.82); } 24% { opacity: 1; transform: scale(1.04); } 68% { opacity: .72; transform: scale(1.12); } 100% { opacity: 0; transform: scale(1.2); } }
-@keyframes fight-wave-right { 0% { opacity: 0; transform: translate3d(-5vw, 0, 0) scale(.28) rotate(-8deg); } 18% { opacity: 1; } 72% { opacity: 1; transform: translate3d(24vw, 0, 0) scale(1.08) rotate(2deg); } 100% { opacity: 0; transform: translate3d(31vw, 0, 0) scale(.4) rotate(5deg); } }
-@keyframes fight-wave-left { 0% { opacity: 0; transform: translate3d(5vw, 0, 0) scaleX(-1) scale(.28) rotate(8deg); } 18% { opacity: 1; } 72% { opacity: 1; transform: translate3d(-24vw, 0, 0) scaleX(-1) scale(1.08) rotate(-2deg); } 100% { opacity: 0; transform: translate3d(-31vw, 0, 0) scaleX(-1) scale(.4) rotate(-5deg); } }
-@keyframes fight-wave-impact { 0%, 63% { opacity: 0; transform: translate(-50%, -50%) scale(.2); } 72% { opacity: 1; transform: translate(-50%, -50%) scale(2.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(8); } }
-@keyframes fight-wave-spin { to { transform: rotate(360deg); } }
-@keyframes fight-badge-energy { to { transform: rotate(360deg); } }
-@keyframes fight-badge-release { 0% { filter: brightness(1); } 32% { filter: brightness(2.2); transform: scale(1.22) skewX(-9deg); } 100% { filter: brightness(1); } }
-@keyframes fight-ui-impact { 0%, 68% { filter: none; transform: translateX(0); } 74% { filter: brightness(1.08); transform: translateX(-2px); } 80% { transform: translateX(2px); } 100% { filter: none; transform: translateX(0); } }
 
 :where(button, a, input, summary):focus-visible { outline: 3px solid color-mix(in srgb, var(--green) 38%, transparent); outline-offset: 2px; }
 
@@ -892,12 +919,11 @@ footer > div span { display: block; }
   .toolbar { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
   .summary-grid { grid-template-columns: repeat(2, 1fr); }
   .node-grid { grid-template-columns: 1fr; }
+  .client-probe-results { grid-template-columns: 1fr; }
   :root[data-color-theme="anime"] .hoshizakura-hero { min-height: 340px; }
   .hoshizakura-copy { width: 62%; padding-left: 42px; }
   :root[data-color-theme="fighter"] .toushin-hero { min-height: 360px; }
   .toushin-copy { width: 53%; padding-left: 42px; }
-  :root[data-color-theme="fighter"] .fighter-duel-stage::before { opacity: .24; }
-  :root[data-color-theme="fighter"] .fighter-duel-stage::after { background: color-mix(in srgb, var(--bg) 72%, transparent); }
   :root[data-color-theme="qiying"] .qiying-hero { min-height: 370px; }
   .qiying-hero-copy { width: 56%; padding-left: 42px; }
   .qiying-eye-glow i { top: 34%; left: 65.6%; }
@@ -909,6 +935,7 @@ footer > div span { display: block; }
   .brand strong { font-size: 19px; }
   .brand small { font-size: 12px; }
   .refresh-button { flex: 1; justify-content: center; }
+  .client-latency-button { flex: 1; justify-content: center; }
   .summary-grid { gap: 10px; }
   .summary-card { padding: 15px; }
   .node-card { --card-gutter: 16px; }
@@ -917,7 +944,8 @@ footer > div span { display: block; }
   .history-bars { gap: 2px; }
   .resource-preview { gap: 8px; }
   .incident-item { align-items: flex-start; flex-direction: column; }
-  footer { align-items: flex-start; flex-direction: column; }
+  footer { grid-template-columns: 1fr; align-items: flex-start; }
+  #footer-time { justify-self: start; text-align: left; }
   .login-form { padding: 22px; }
   .latency-dialog-panel { padding: 22px 18px 20px; }
   .latency-chart-wrap { min-height: 260px; }
@@ -939,7 +967,7 @@ footer > div span { display: block; }
   .toushin-kicker { font-size: 8px; }
   .toushin-status { margin-top: 22px; }
   .toushin-status span { max-width: 150px; }
-  :root[data-color-theme="fighter"] .fighter-wave-badge { top: -11px; right: 66px; width: 50px; height: 27px; }
+  :root[data-color-theme="fighter"] .fighter-character-badge { top: -18px; right: 64px; width: 66px; height: 76px; transform: scale(.9); transform-origin: top right; }
   :root[data-color-theme="qiying"] .qiying-hero { min-height: 390px; border-radius: 14px 5px 14px 5px; }
   :root[data-color-theme="qiying"] .qiying-hero::before { inset: -2% -42% -2% -12%; background-position: 65% center; }
   :root[data-color-theme="qiying"] .qiying-hero::after { background: linear-gradient(90deg, rgba(5, 3, 12, .99) 0%, rgba(7, 4, 16, .94) 45%, rgba(9, 5, 20, .46) 76%, rgba(9, 5, 20, .12)); }

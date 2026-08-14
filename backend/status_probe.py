@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import socket
 import sqlite3
@@ -31,17 +32,19 @@ class NodeConfig:
     port: int
     detail_url: str
     diagnostic_url: str | None = None
+    probe_url: str | None = None
 
 
 @dataclass(frozen=True)
 class ProbeResult:
-    """保存一次 TCP 可用性探测结果。"""
+    """保存一次节点端到端可用性探测结果。"""
 
     node_id: str
     online: bool
     latency_ms: float | None
     error: str | None
     checked_at: int
+    probe_kind: str = "legacy_tcp"
 
 
 def load_config(config_path: str) -> tuple[list[NodeConfig], dict[str, Any]]:
@@ -85,6 +88,9 @@ def load_config(config_path: str) -> tuple[list[NodeConfig], dict[str, Any]]:
                 diagnostic_url=(
                     str(raw_node.get("diagnostic_url") or "").strip() or None
                 ),
+                probe_url=(
+                    str(raw_node.get("probe_url") or "").strip() or None
+                ),
             )
         )
     return nodes, raw_config
@@ -108,18 +114,113 @@ def describe_socket_error(error: OSError) -> str:
     return "连接失败"
 
 
-def probe_node(node: NodeConfig, timeout_seconds: float) -> ProbeResult:
-    """检测节点对应的 FRP TCP 入口能否建立连接。
+def probe_node(
+    node: NodeConfig,
+    timeout_seconds: float,
+    bearer_token: str | None = None,
+) -> ProbeResult:
+    """通过受保护回显或 TCP 入口检测节点端到端可用性。
+
+    配置 ``probe_url`` 时，计时范围覆盖 VPS、FRP 隧道、GPU Agent 与
+    返回响应的完整往返；未配置时仅保留旧版 TCP 入口探测兼容能力。
 
     Args:
         node: 目标节点的地址、端口和展示信息。
         timeout_seconds: TCP 建立连接的最大等待秒数。
+        bearer_token: 调用公网 Agent 轻量回显接口的 Bearer Token。
 
     Returns:
         包含在线状态、连接耗时、错误和检测时间的结果。
     """
     started_at = time.monotonic()
     checked_at = int(time.time())
+    if node.probe_url:
+        if not bearer_token:
+            return ProbeResult(
+                node.node_id,
+                False,
+                None,
+                "节点探测未配置",
+                checked_at,
+                "end_to_end",
+            )
+        request = urllib.request.Request(
+            node.probe_url,
+            headers={
+                "Authorization": f"Bearer {bearer_token}",
+                "Accept": "application/json",
+                "Cache-Control": "no-cache",
+            },
+            method="GET",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                payload_bytes = response.read(4097)
+            if len(payload_bytes) > 4096:
+                raise ValueError("探测响应过大")
+            payload = json.loads(payload_bytes.decode("utf-8"))
+            data = payload.get("data") if isinstance(payload, dict) else None
+            response_is_valid = isinstance(data, dict) and (
+                data.get("probe") == "ok"
+                or (
+                    isinstance(data.get("node_id"), str)
+                    and bool(data.get("node_id"))
+                    and isinstance(data.get("classification"), str)
+                )
+            )
+            if not response_is_valid:
+                raise ValueError("探测响应无效")
+            latency_ms = round((time.monotonic() - started_at) * 1000, 1)
+            return ProbeResult(
+                node.node_id,
+                True,
+                latency_ms,
+                None,
+                checked_at,
+                "end_to_end",
+            )
+        except urllib.error.HTTPError:
+            return ProbeResult(
+                node.node_id,
+                False,
+                None,
+                "节点探测失败",
+                checked_at,
+                "end_to_end",
+            )
+        except urllib.error.URLError as error:
+            reason = error.reason
+            public_error = (
+                describe_socket_error(reason)
+                if isinstance(reason, OSError)
+                else "连接失败"
+            )
+            return ProbeResult(
+                node.node_id,
+                False,
+                None,
+                public_error,
+                checked_at,
+                "end_to_end",
+            )
+        except (OSError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
+            return ProbeResult(
+                node.node_id,
+                False,
+                None,
+                "节点探测失败",
+                checked_at,
+                "end_to_end",
+            )
+        except ValueError:
+            return ProbeResult(
+                node.node_id,
+                False,
+                None,
+                "节点探测响应异常",
+                checked_at,
+                "end_to_end",
+            )
     try:
         with socket.create_connection((node.host, node.port), timeout=timeout_seconds):
             latency_ms = round((time.monotonic() - started_at) * 1000, 1)
@@ -137,19 +238,26 @@ def probe_node(node: NodeConfig, timeout_seconds: float) -> ProbeResult:
 def probe_nodes(
     nodes: Sequence[NodeConfig],
     timeout_seconds: float,
+    bearer_token: str | None = None,
 ) -> list[ProbeResult]:
     """并发检测全部节点，避免离线节点叠加等待时间。
 
     Args:
         nodes: 需要探测的节点序列。
         timeout_seconds: 每个节点单独使用的连接超时秒数。
+        bearer_token: 调用公网 Agent 端到端回显接口的 Bearer Token。
 
     Returns:
         与输入节点顺序一致的探测结果列表。
     """
     worker_count = max(1, min(len(nodes), 8))
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
-        return list(executor.map(lambda node: probe_node(node, timeout_seconds), nodes))
+        return list(
+            executor.map(
+                lambda node: probe_node(node, timeout_seconds, bearer_token),
+                nodes,
+            )
+        )
 
 
 def load_private_token(token_path: str | None) -> str | None:
@@ -272,10 +380,20 @@ def open_database(database_path: str) -> sqlite3.Connection:
             online INTEGER NOT NULL,
             latency_ms REAL,
             error TEXT,
+            probe_kind TEXT NOT NULL DEFAULT 'legacy_tcp',
             PRIMARY KEY (node_id, checked_at)
         )
         """
     )
+    check_columns = {
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(checks)").fetchall()
+    }
+    if "probe_kind" not in check_columns:
+        connection.execute(
+            "ALTER TABLE checks ADD COLUMN probe_kind "
+            "TEXT NOT NULL DEFAULT 'legacy_tcp'"
+        )
     connection.execute(
         "CREATE INDEX IF NOT EXISTS idx_checks_time ON checks (checked_at)"
     )
@@ -322,9 +440,9 @@ def record_results(
     connection.executemany(
         """
         INSERT OR REPLACE INTO checks
-            (node_id, checked_at, online, latency_ms, error)
+            (node_id, checked_at, online, latency_ms, error, probe_kind)
         VALUES
-            (:node_id, :checked_at, :online, :latency_ms, :error)
+            (:node_id, :checked_at, :online, :latency_ms, :error, :probe_kind)
         """,
         [asdict(result) for result in results],
     )
@@ -369,9 +487,9 @@ def build_latency_profile(
 ) -> dict[str, Any]:
     """计算节点连接延迟、可用性和失败分布并生成轻量趋势采样。
 
-    延迟平均值只统计成功建立连接且拥有延迟值的探测；失败连接没有有效
-    延迟值，因此单独统计为故障样本。趋势按固定时间桶聚合，避免把最近
-    24 小时的每分钟原始记录全部发送给浏览器。
+    延迟统计只使用成功完成端到端往返且拥有延迟值的探测；失败连接没有
+    有效延迟值，因此单独统计为故障样本。趋势按固定时间桶聚合，避免把
+    最近 24 小时的每分钟原始记录全部发送给浏览器。
 
     Args:
         connection: 状态历史数据库连接。
@@ -383,33 +501,58 @@ def build_latency_profile(
         包含成功平均延迟、成功/失败样本数、可用率、桶宽度和趋势点的字典。
     """
     normalized_bucket_seconds = max(int(bucket_seconds), 60)
+    check_columns = {
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(checks)").fetchall()
+    }
+    probe_filter = ""
+    query_parameters: list[Any] = [
+        normalized_bucket_seconds,
+        normalized_bucket_seconds,
+        node_id,
+        since_timestamp,
+    ]
+    if "probe_kind" in check_columns:
+        end_to_end_count = int(
+            connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM checks
+                WHERE node_id = ? AND checked_at >= ? AND probe_kind = ?
+                """,
+                (node_id, since_timestamp, "end_to_end"),
+            ).fetchone()["total"]
+        )
+        if end_to_end_count:
+            probe_filter = "AND probe_kind = 'end_to_end'"
     rows = connection.execute(
-        """
+        f"""
         SELECT
             CAST(checked_at / ? AS INTEGER) * ? AS bucket_start,
             AVG(
                 CASE WHEN online = 1 AND latency_ms IS NOT NULL
                 THEN latency_ms END
             ) AS average_latency,
+            MAX(
+                CASE WHEN online = 1 AND latency_ms IS NOT NULL
+                THEN latency_ms END
+            ) AS maximum_latency,
             SUM(
                 CASE WHEN online = 1 AND latency_ms IS NOT NULL
                 THEN 1 ELSE 0 END
-            ) AS success_count,
+            ) AS latency_sample_count,
+            SUM(CASE WHEN online = 1 THEN 1 ELSE 0 END) AS success_count,
             SUM(CASE WHEN online = 0 THEN 1 ELSE 0 END) AS failed_count,
             COUNT(*) AS total_count
         FROM checks
         WHERE
             node_id = ?
             AND checked_at >= ?
+            {probe_filter}
         GROUP BY bucket_start
         ORDER BY bucket_start ASC
         """,
-        (
-            normalized_bucket_seconds,
-            normalized_bucket_seconds,
-            node_id,
-            since_timestamp,
-        ),
+        query_parameters,
     ).fetchall()
 
     points: list[dict[str, Any]] = []
@@ -423,6 +566,12 @@ def build_latency_profile(
             if row["average_latency"] is not None
             else None
         )
+        maximum_latency = (
+            float(row["maximum_latency"])
+            if row["maximum_latency"] is not None
+            else None
+        )
+        latency_sample_count = int(row["latency_sample_count"] or 0)
         success_count = int(row["success_count"] or 0)
         failed_count = int(row["failed_count"] or 0)
         total_count = int(row["total_count"] or 0)
@@ -445,18 +594,62 @@ def build_latency_profile(
                     else None
                 ),
                 "samples": success_count,
+                "latency_samples": latency_sample_count,
                 "success_samples": success_count,
                 "failed_samples": failed_count,
                 "total_samples": total_count,
                 "availability": availability,
+                "maximum_ms": (
+                    round(maximum_latency, 1)
+                    if maximum_latency is not None
+                    else None
+                ),
                 "state": state,
             }
         )
         if average_latency is not None:
-            weighted_latency += average_latency * success_count
-        success_samples += success_count
+            weighted_latency += average_latency * latency_sample_count
+        success_samples += latency_sample_count
         failed_samples += failed_count
         all_samples += total_count
+
+    latency_rows = connection.execute(
+        f"""
+        SELECT checked_at, latency_ms
+        FROM checks
+        WHERE
+            node_id = ?
+            AND checked_at >= ?
+            AND online = 1
+            AND latency_ms IS NOT NULL
+            {probe_filter}
+        ORDER BY checked_at ASC
+        """,
+        (node_id, since_timestamp),
+    ).fetchall()
+    chronological_latencies = [float(row["latency_ms"]) for row in latency_rows]
+    sorted_latencies = sorted(chronological_latencies)
+    percentile_95_ms = (
+        sorted_latencies[max(math.ceil(len(sorted_latencies) * 0.95) - 1, 0)]
+        if sorted_latencies
+        else None
+    )
+    maximum_ms = max(sorted_latencies) if sorted_latencies else None
+    jitter_samples = [
+        abs(current - previous)
+        for previous, current in zip(
+            chronological_latencies,
+            chronological_latencies[1:],
+        )
+    ]
+    jitter_ms = (
+        sum(jitter_samples) / len(jitter_samples)
+        if jitter_samples
+        else None
+    )
+    successful_checks = sum(
+        int(point["success_samples"] or 0) for point in points
+    )
 
     return {
         "average_ms": (
@@ -464,12 +657,19 @@ def build_latency_profile(
             if success_samples
             else None
         ),
+        "p95_ms": (
+            round(percentile_95_ms, 1)
+            if percentile_95_ms is not None
+            else None
+        ),
+        "maximum_ms": round(maximum_ms, 1) if maximum_ms is not None else None,
+        "jitter_ms": round(jitter_ms, 1) if jitter_ms is not None else None,
         "samples": success_samples,
-        "success_samples": success_samples,
+        "success_samples": successful_checks,
         "failed_samples": failed_samples,
         "total_samples": all_samples,
         "availability": (
-            round(success_samples / all_samples * 100, 2)
+            round(successful_checks / all_samples * 100, 2)
             if all_samples
             else None
         ),
@@ -589,18 +789,31 @@ def build_incidents(
 
 
 DIAGNOSTIC_REASON_LABELS = {
-    "node_frpc_service_failure": "节点 FRP 客户端服务异常",
-    "node_frpc_session_failure": "节点 FRP 控制会话异常",
+    "node_frpc_service_failure": "节点连接服务异常",
+    "node_frpc_session_failure": "节点连接会话异常",
     "school_local_network_or_gateway": "学校本地网络或默认网关异常",
     "school_shared_network_disruption": "学校侧公共网络短时中断",
     "school_outbound_or_isp": "学校公网出口或运营商异常",
-    "frp_port_or_policy": "FRP 服务端口或端口策略异常",
-    "frp_control_plane_degraded": "FRP 服务端控制链路异常",
+    "frp_port_or_policy": "中转服务端口或端口策略异常",
+    "frp_control_plane_degraded": "中转服务控制链路异常",
     "school_vps_inter_network_route": "学校与 VPS 之间的跨网路由异常",
-    "frp_link_unavailable": "FRP 公网链路异常",
-    "vps_frps_service_failure": "VPS 的 FRP 服务异常",
-    "vps_frps_port_unavailable": "VPS 的 FRP 监听端口异常",
+    "frp_link_unavailable": "公网中转链路异常",
+    "vps_frps_service_failure": "VPS 中转服务异常",
+    "vps_frps_port_unavailable": "VPS 中转端口异常",
     "vps_upstream_network": "VPS 上游网络异常",
+}
+
+PUBLIC_REASON_REPLACEMENTS = {
+    "端到端探测未配置": "节点探测未配置",
+    "端到端探测失败": "节点探测失败",
+    "端到端探测响应异常": "节点探测响应异常",
+    "节点 FRP 客户端服务异常": "节点连接服务异常",
+    "节点 FRP 控制会话异常": "节点连接会话异常",
+    "FRP 服务端口或端口策略异常": "中转服务端口或端口策略异常",
+    "FRP 服务端控制链路异常": "中转服务控制链路异常",
+    "FRP 公网链路异常": "公网中转链路异常",
+    "VPS FRP 服务异常": "VPS 中转服务异常",
+    "VPS FRP 端口异常": "VPS 中转端口异常",
 }
 
 
@@ -762,8 +975,12 @@ def apply_incident_annotations(
             restored.append(item)
             continue
         item["raw_reason"] = item.get("reason")
-        item["reason"] = str(row["reason"])
-        item["diagnostic_classification"] = str(row["classification"])
+        classification = str(row["classification"])
+        item["reason"] = DIAGNOSTIC_REASON_LABELS.get(
+            classification,
+            str(row["reason"]),
+        )
+        item["diagnostic_classification"] = classification
         item["diagnostic_scope"] = str(row["scope"])
         try:
             correlated_nodes = json.loads(row["correlated_node_ids"] or "[]")
@@ -963,6 +1180,27 @@ def store_incident_annotations(
     connection.commit()
 
 
+def build_public_incidents(
+    incidents: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """生成不包含内部诊断实现细节的公开故障记录。
+
+    Args:
+        incidents: 已完成诊断归因的内部故障记录。
+
+    Returns:
+        仅保留时间、时长和用户可读原因的公开故障记录。
+    """
+    public_keys = ("started_at", "ended_at", "duration_seconds")
+    public_incidents: list[dict[str, Any]] = []
+    for incident in incidents:
+        public_incident = {key: incident.get(key) for key in public_keys}
+        reason = str(incident.get("reason") or "连接失败")
+        public_incident["reason"] = PUBLIC_REASON_REPLACEMENTS.get(reason, reason)
+        public_incidents.append(public_incident)
+    return public_incidents
+
+
 def build_status_document(
     connection: sqlite3.Connection,
     nodes: Sequence[NodeConfig],
@@ -1038,7 +1276,9 @@ def build_status_document(
                 "history": build_daily_history(
                     connection, node.node_id, history_days, now
                 ),
-                "incidents": incidents_by_node[node.node_id],
+                "incidents": build_public_incidents(
+                    incidents_by_node[node.node_id]
+                ),
                 "detail_url": node.detail_url,
             }
         )
@@ -1050,7 +1290,7 @@ def build_status_document(
         else None
     )
     return {
-        "version": 2,
+        "version": 3,
         "generated_at": now.isoformat(timespec="seconds"),
         "generated_at_unix": int(now.timestamp()),
         "check_interval_seconds": check_interval_seconds,
@@ -1126,7 +1366,7 @@ def run_probe(config_path: str) -> dict[str, Any]:
         str(config.get("server_diagnostic_state_path") or "").strip() or None
     )
 
-    results = probe_nodes(nodes, timeout_seconds)
+    results = probe_nodes(nodes, timeout_seconds, diagnostic_token)
     connection = open_database(database_path)
     try:
         record_results(connection, results, retention_days)

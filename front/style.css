@@ -87,6 +87,7 @@ body {
   font-family: "SF Pro Text", "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+html.theme-transition-probe body { opacity: .99999; }
 
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-group(root) {
@@ -94,11 +95,28 @@ body {
     animation-timing-function: cubic-bezier(.22, .72, .18, 1);
   }
   ::view-transition-old(root) {
-    animation: theme-surface-out 320ms ease both;
+    z-index: 1;
+    animation: none;
   }
   ::view-transition-new(root) {
-    animation: theme-surface-reveal 460ms cubic-bezier(.22, .72, .18, 1) both;
+    z-index: 2;
+    animation: none;
   }
+  html.theme-transition-warmup::view-transition-group(root) {
+    animation-duration: 1ms !important;
+  }
+  html.theme-transition-warmup::view-transition-old(root),
+  html.theme-transition-warmup::view-transition-new(root) {
+    animation: none !important;
+  }
+  html.theme-view-transition-css::view-transition-new(root) {
+    animation: theme-circle-reveal-css 460ms cubic-bezier(.22, .72, .18, 1) both;
+  }
+}
+
+@keyframes theme-circle-reveal-css {
+  from { -webkit-clip-path: circle(0 at var(--theme-transition-x) var(--theme-transition-y)); clip-path: circle(0 at var(--theme-transition-x) var(--theme-transition-y)); }
+  to { -webkit-clip-path: circle(var(--theme-transition-radius) at var(--theme-transition-x) var(--theme-transition-y)); clip-path: circle(var(--theme-transition-radius) at var(--theme-transition-x) var(--theme-transition-y)); }
 }
 
 html.theme-transition-fallback,
@@ -118,15 +136,6 @@ html.theme-transition-fallback .el-select__wrapper {
   transition: background-color 420ms ease, border-color 420ms ease, color 360ms ease, box-shadow 420ms ease, opacity 420ms ease, filter 420ms ease;
 }
 
-@keyframes theme-surface-out {
-  from { opacity: 1; }
-  to { opacity: .72; }
-}
-
-@keyframes theme-surface-reveal {
-  from { clip-path: circle(0 at var(--theme-transition-x) var(--theme-transition-y)); }
-  to { clip-path: circle(var(--theme-transition-radius) at var(--theme-transition-x) var(--theme-transition-y)); }
-}
 [data-color-theme="anime"] body { background-color: var(--page); background-image: radial-gradient(circle at 12% 7%, rgba(99, 205, 240, .16), transparent 24%), radial-gradient(circle at 88% 10%, rgba(240, 109, 172, .18), transparent 27%), linear-gradient(145deg, transparent 50%, rgba(170, 139, 255, .08)); background-attachment: fixed; }
 [data-color-theme="anime"] body::before { position: fixed; inset: 0; z-index: 0; background-image: radial-gradient(circle, rgba(240, 109, 172, .23) 0 1px, transparent 1.8px), radial-gradient(circle, rgba(99, 205, 240, .18) 0 1px, transparent 1.8px); background-position: 8px 12px, 54px 58px; background-size: 92px 92px; content: ""; pointer-events: none; }
 [data-color-theme="anime"] body::after { position: fixed; top: 88px; right: -72px; z-index: 0; width: min(680px, 52vw); height: 780px; background: url("/status-assets/assets/hoshizakura-lab-v1.webp") 67% center / cover no-repeat; content: ""; opacity: .2; pointer-events: none; filter: saturate(.9); -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 11%, #000 70%, transparent 100%), linear-gradient(to right, transparent 0, #000 27%, #000 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 11%, #000 70%, transparent 100%); animation: anime-monitor-portrait 1.2s cubic-bezier(.16, .84, .24, 1) both; }
@@ -417,6 +426,7 @@ code { color: var(--ink-secondary); font-family: "SFMono-Regular", Consolas, mon
 .text-info { color: var(--ink-muted); }
 .footer-copyright { margin-top: 36px; padding: 22px 0 4px; color: var(--ink-muted); font-size: 10px; text-align: center; border-top: 1px solid var(--border); }
 .footer-copyright p { margin: 3px; }
+.footer-copyright .icp-record-placeholder { min-height: 1em; text-align: left; }
 
 /* Element Plus */
 .el-button { --el-button-bg-color: var(--surface); --el-button-text-color: var(--ink); --el-button-border-color: var(--border); --el-button-hover-bg-color: var(--brand-soft); --el-button-hover-text-color: var(--brand); --el-button-hover-border-color: var(--brand); border-radius: 9px; box-shadow: none; }

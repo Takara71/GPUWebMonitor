@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=20260811" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260811" />
   <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png?v=20260811" />
-  <link rel="stylesheet" href="/status-assets/status.css?v=39" />
+  <link rel="stylesheet" href="/status-assets/status.css?v=50" />
 </head>
 <body>
   <div class="qiying-transition" id="qiying-transition" aria-hidden="true">
@@ -47,16 +47,6 @@
       <span class="qiying-card-cut-shards"><i></i><i></i><i></i><i></i><i></i><i></i></span>
     </div>
   </div>
-  <div class="fighter-duel-stage" aria-hidden="true"></div>
-  <div class="fighter-duel-effects" id="fighter-duel-effects" aria-hidden="true">
-    <i class="fighter-aura fighter-aura-ryu"></i>
-    <i class="fighter-aura fighter-aura-ken"></i>
-    <i class="fighter-aura fighter-aura-akuma"></i>
-    <i class="fighter-attack-wave fighter-attack-wave-ryu"><b></b></i>
-    <i class="fighter-attack-wave fighter-attack-wave-ken"><b></b></i>
-    <i class="fighter-attack-wave fighter-attack-wave-akuma"><b></b></i>
-    <i class="fighter-impact"></i>
-  </div>
   <div class="page-shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="返回实验室服务状态首页" data-i18n-aria="homeAria">
@@ -67,6 +57,10 @@
         <button class="refresh-button" id="refresh-button" type="button" aria-label="立即刷新状态并重置倒计时" data-i18n-aria="refresh.manualAria">
           <svg class="refresh-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 8.5A9 9 0 1 0 21 12"></path><path d="M21 3v6h-6"></path></svg>
           <span id="refresh-label">正在获取状态</span>
+        </button>
+        <button class="client-latency-button" id="client-latency-button" type="button" hidden aria-label="测试本机到 GPU 节点的延迟" data-i18n-aria="clientProbe.openAria">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2.2-5 4.1 10 2.2-5H21"></path></svg>
+          <span data-i18n="clientProbe.button">本机延迟测试</span>
         </button>
         <div class="language-switch" role="group" aria-label="语言" data-i18n-aria="language">
           <button type="button" data-locale="zh" aria-label="中文">中</button>
@@ -133,7 +127,7 @@
       </section>
       <section class="summary-grid" aria-label="状态摘要" data-i18n-aria="summaryAria">
         <article class="summary-card"><span data-i18n="summary.total">监控节点</span><strong id="total-count">—</strong><small data-i18n="summary.totalHint">全部计算服务器</small></article>
-        <article class="summary-card is-online"><span data-i18n="summary.online">正常节点</span><strong id="online-count">—</strong><small data-i18n="summary.onlineHint">FRP 与 Agent 可连接</small></article>
+        <article class="summary-card is-online"><span data-i18n="summary.online">正常节点</span><strong id="online-count">—</strong><small data-i18n="summary.onlineHint">连接正常</small></article>
         <article class="summary-card is-offline"><span data-i18n="summary.offline">异常节点</span><strong id="offline-count">—</strong><small data-i18n="summary.offlineHint">连接超时或中断</small></article>
         <article class="summary-card"><span data-i18n="summary.availability">平均可用率</span><strong id="availability-value">—</strong><small data-i18n="summary.availabilityHint">最近 30 天</small></article>
       </section>
@@ -143,14 +137,17 @@
     </main>
 
     <footer>
-      <div><span data-i18n="footer.description">实验室基础设施状态 · 详细资源信息需要登录</span></div>
+      <div>
+        <span data-i18n="footer.description">实验室基础设施状态 · 详细资源信息需要登录</span>
+        <span class="icp-record-placeholder" data-i18n="footer.icpPlaceholder">ICP备案信息（待补充）</span>
+      </div>
       <span id="footer-time" data-i18n="footer.waiting">等待首次检测</span>
     </footer>
   </div>
 
   <template id="node-card-template">
     <article class="node-card">
-      <span class="fighter-wave-badge" aria-hidden="true"><i></i></span>
+      <span class="fighter-character-badge" aria-hidden="true"><i></i></span>
       <span class="qiying-blade-badge" aria-hidden="true"><i></i><b></b></span>
       <div class="node-heading">
         <div>
@@ -168,7 +165,7 @@
       </div>
       <div class="metric-grid">
         <button class="metric-card latency-metric" type="button" aria-label="查看响应时间趋势" data-i18n-aria="latency.openAria">
-          <span class="metric-label-row"><span data-i18n="node.averageLatency">平均响应时间</span><svg class="trend-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="m7 15 4-5 3 3 5-6"></path></svg></span>
+          <span class="metric-label-row"><span data-i18n="node.averageLatency">节点延迟</span><svg class="trend-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="m7 15 4-5 3 3 5-6"></path></svg></span>
           <strong class="latency-value">—</strong>
           <small data-i18n="node.last24h">最近 24 小时</small>
         </button>
@@ -208,11 +205,14 @@
   <dialog class="latency-dialog" id="latency-dialog" aria-labelledby="latency-dialog-title">
     <section class="latency-dialog-panel">
       <div class="latency-dialog-heading">
-        <div><h2 id="latency-dialog-title" data-i18n="latency.title">响应时间趋势</h2><p id="latency-dialog-node"></p></div>
+        <div><h2 id="latency-dialog-title" data-i18n="latency.title">节点质量</h2><p id="latency-dialog-node"></p></div>
         <button class="dialog-close" id="latency-dialog-close" type="button" aria-label="关闭响应时间趋势" data-i18n-aria="latency.closeAria">×</button>
       </div>
       <div class="latency-chart-summary">
-        <span><small data-i18n="latency.average">成功连接平均延迟</small><strong id="latency-dialog-average">—</strong></span>
+        <span><small data-i18n="latency.average">平均延迟</small><strong id="latency-dialog-average">—</strong></span>
+        <span><small data-i18n="latency.p95">P95 延迟</small><strong id="latency-dialog-p95">—</strong></span>
+        <span><small data-i18n="latency.maximum">最大延迟</small><strong id="latency-dialog-maximum">—</strong></span>
+        <span><small data-i18n="latency.jitter">平均抖动</small><strong id="latency-dialog-jitter">—</strong></span>
         <span><small data-i18n="latency.availability">24 小时探测可用率</small><strong id="latency-dialog-availability">—</strong></span>
         <span><small data-i18n="latency.failures">连接失败</small><strong id="latency-dialog-failures">—</strong></span>
       </div>
@@ -221,11 +221,20 @@
         <p class="latency-chart-empty" id="latency-chart-empty" hidden data-i18n="latency.empty">最近 24 小时暂无响应时间样本</p>
       </div>
       <div class="latency-chart-legend" aria-hidden="true">
-        <span class="is-success"><i></i><b data-i18n="latency.successLegend">成功连接延迟</b></span>
+        <span class="is-success"><i></i><b data-i18n="latency.successLegend">成功连接</b></span>
         <span class="is-degraded"><i></i><b data-i18n="latency.degradedLegend">部分探测失败</b></span>
         <span class="is-offline"><i></i><b data-i18n="latency.offlineLegend">完全无法连接</b></span>
       </div>
-      <p class="latency-chart-note" data-i18n="latency.successfulOnly">延迟仅统计成功建立连接的探测；无法连接单独显示为故障区间。</p>
+    </section>
+  </dialog>
+
+  <dialog class="client-probe-dialog" id="client-probe-dialog" aria-labelledby="client-probe-title">
+    <section class="client-probe-panel">
+      <div class="latency-dialog-heading">
+        <div><h2 id="client-probe-title" data-i18n="clientProbe.title">本机延迟测试</h2><p data-i18n="clientProbe.description">当前设备 ↔ GPU 节点</p></div>
+        <button class="dialog-close" id="client-probe-close" type="button" aria-label="关闭本机延迟测试" data-i18n-aria="clientProbe.closeAria">×</button>
+      </div>
+      <div class="client-probe-results" id="client-probe-results"></div>
     </section>
   </dialog>
 
@@ -244,6 +253,6 @@
     </form>
   </dialog>
 
-  <script src="/status-assets/status.js?v=34" defer></script>
+  <script src="/status-assets/status.js?v=45" defer></script>
 </body>
 </html>

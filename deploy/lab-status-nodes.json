@@ -15,6 +15,7 @@
       "host": "127.0.0.1",
       "port": 15101,
       "detail_url": "/monitor/?node=gpu-node-a",
+      "probe_url": "http://127.0.0.1:15101/api/link-diagnostic",
       "diagnostic_url": "http://127.0.0.1:15101/api/link-diagnostic"
     },
     {
@@ -23,6 +24,7 @@
       "host": "127.0.0.1",
       "port": 15102,
       "detail_url": "/monitor/?node=gpu-node-b",
+      "probe_url": "http://127.0.0.1:15102/api/link-diagnostic",
       "diagnostic_url": "http://127.0.0.1:15102/api/link-diagnostic"
     },
     {
@@ -31,6 +33,7 @@
       "host": "127.0.0.1",
       "port": 15103,
       "detail_url": "/monitor/?node=gpu-node-c",
+      "probe_url": "http://127.0.0.1:15103/api/link-diagnostic",
       "diagnostic_url": "http://127.0.0.1:15103/api/link-diagnostic"
     }
   ]

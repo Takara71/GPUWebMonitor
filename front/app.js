@@ -47,7 +47,7 @@ const app = createApp({
         process: { title: '计算进程', count: (n) => `${n} 个进程`, pid: 'PID', user: '用户', name: '进程名', memory: '显存占用', command: '命令', empty: '该 GPU 暂无活跃计算进程' },
         units: { cards: (n) => `${n} 张`, unavailable: '不可用' },
         errors: { noConfigTitle: '未配置计算节点', noConfigDesc: '未找到服务器配置，请检查 front/config.json。', configFailedTitle: '无法加载节点配置', loadServerList: '无法加载服务器列表，请确认 Dashboard 服务正在运行。', nodeFailedTitle: '无法获取当前节点数据', nodeFailedDesc: '已保留最近一次有效数据。请检查节点网络或 Agent 服务后重试。', fetchFailed: (m) => `获取数据失败：${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor' },
+        footer: { line1: '© 2026 GPUWebMonitor', icpPlaceholder: 'ICP备案信息（待补充）' },
       },
       en: {
         appTitle: 'GPU Cluster Monitor', appSubtitle: 'Live node resources, GPU workloads, and compute processes',
@@ -64,7 +64,7 @@ const app = createApp({
         process: { title: 'Compute processes', count: (n) => `${n} processes`, pid: 'PID', user: 'User', name: 'Process', memory: 'GPU memory', command: 'Command', empty: 'No active compute process on this GPU' },
         units: { cards: (n) => `${n} cards`, unavailable: 'Unavailable' },
         errors: { noConfigTitle: 'No compute nodes configured', noConfigDesc: 'No server configuration was found. Check front/config.json.', configFailedTitle: 'Unable to load node configuration', loadServerList: 'Unable to load the server list. Make sure Dashboard is running.', nodeFailedTitle: 'Unable to retrieve node data', nodeFailedDesc: 'The latest valid data is preserved. Check the node network or Agent service and retry.', fetchFailed: (m) => `Failed to fetch data: ${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor' },
+        footer: { line1: '© 2026 GPUWebMonitor', icpPlaceholder: 'ICP filing information (pending)' },
       },
       ja: {
         appTitle: 'GPU クラスターモニター', appSubtitle: 'ノード資源、GPU 負荷、計算プロセスをリアルタイム監視',
@@ -81,7 +81,7 @@ const app = createApp({
         process: { title: '計算プロセス', count: (n) => `${n} プロセス`, pid: 'PID', user: 'ユーザー', name: 'プロセス', memory: 'GPU メモリ', command: 'コマンド', empty: 'この GPU にアクティブな計算プロセスはありません' },
         units: { cards: (n) => `${n} 枚`, unavailable: '利用不可' },
         errors: { noConfigTitle: '計算ノードが未設定です', noConfigDesc: 'サーバー設定がありません。front/config.json を確認してください。', configFailedTitle: 'ノード設定を読み込めません', loadServerList: 'サーバー一覧を読み込めません。Dashboard の起動状態を確認してください。', nodeFailedTitle: 'ノードデータを取得できません', nodeFailedDesc: '直近の有効データを保持しています。ネットワークまたは Agent を確認して再試行してください。', fetchFailed: (m) => `データ取得失敗：${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor' },
+        footer: { line1: '© 2026 GPUWebMonitor', icpPlaceholder: 'ICP 届出情報（準備中）' },
       },
     };
 
@@ -115,7 +115,13 @@ const app = createApp({
     let themeMediaListener = null;
     let colorThemeStorageListener = null;
     let activeThemeTransition = null;
+    let activeThemeAnimation = null;
     let themeFallbackTimer = null;
+    let themeTransitionWarmupPromise = null;
+    let themeTransitionWarmed = false;
+    let themeTransitionReady = false;
+    let themeNeedsRetinaCompensation = true;
+    let themeTogglePending = false;
     let qiyingArrivalTimer = null;
 
     const trendRanges = { session: { seconds: null }, '10m': { seconds: 600 }, '30m': { seconds: 1800 }, '1h': { seconds: 3600 }, '6h': { seconds: 21600 }, '12h': { seconds: 43200 } };
@@ -445,18 +451,113 @@ const app = createApp({
     };
 
     /**
+     * 解析明暗切换动画的圆心与覆盖半径。
+     *
+     * 始终使用按钮的实时布局中心，避免 macOS Chromium 首次创建 View
+     * Transition 伪元素时使用事件坐标或尚未同步的 CSS 自定义属性。
+     *
+     * @param {MouseEvent|null} event - 主题按钮的点击事件。
+     * @param {string} fallbackSelector - 无有效点击坐标时用于定位按钮的选择器。
+     * @returns {{originX: number, originY: number, radius: number}} 动画几何信息。
+     */
+    const resolveThemeTransitionGeometry = (event, fallbackSelector) => {
+      const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+      const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+      const trigger = event?.currentTarget instanceof Element
+        ? event.currentTarget
+        : document.querySelector(fallbackSelector);
+      const bounds = trigger?.getBoundingClientRect?.();
+      const originX = bounds ? bounds.left + bounds.width / 2 : viewportWidth - 42;
+      const originY = bounds ? bounds.top + bounds.height / 2 : 42;
+      const radius = Math.hypot(
+        Math.max(originX, viewportWidth - originX),
+        Math.max(originY, viewportHeight - originY),
+      );
+      return { originX, originY, radius };
+    };
+
+    /**
+     * 判断当前环境是否为存在首次根快照尺寸异常的 macOS Chromium。
+     *
+     * @returns {boolean} macOS 上的 Chrome、Edge 或 Chromium 返回 true。
+     */
+    const isMacChromium = () => {
+      const userAgent = navigator.userAgent || '';
+      return /Macintosh|Mac OS X/i.test(userAgent)
+        && /(?:Chrome|Chromium|Edg)\//i.test(userAgent);
+    };
+
+    /**
+     * 等待浏览器完成一次布局与合成帧。
+     *
+     * @returns {Promise<void>} 下一帧绘制前兑现的 Promise。
+     */
+    const waitForThemePaint = () => new Promise((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    });
+
+    /**
+     * 在 macOS Chromium 中预先创建一次不可见的根快照。
+     *
+     * @returns {Promise<void>} 预热完成或安全回退已经确定时兑现的 Promise。
+     */
+    const warmThemeTransitionEngine = () => {
+      if (themeTransitionWarmed) return Promise.resolve();
+      if (themeTransitionWarmupPromise) return themeTransitionWarmupPromise;
+      if (!isMacChromium() || typeof document.startViewTransition !== 'function') {
+        themeTransitionWarmed = true;
+        themeTransitionReady = typeof document.startViewTransition === 'function';
+        return Promise.resolve();
+      }
+      themeTransitionWarmupPromise = (async () => {
+        if (document.readyState !== 'complete') {
+          await new Promise((resolve) => window.addEventListener('load', resolve, { once: true }));
+        }
+        if (document.fonts?.ready) await document.fonts.ready.catch(() => {});
+        await waitForThemePaint();
+        await waitForThemePaint();
+        const root = document.documentElement;
+        root.classList.add('theme-transition-warmup');
+        try {
+          const transition = document.startViewTransition(() => {
+            root.classList.add('theme-transition-probe');
+          });
+          await transition.finished;
+          themeTransitionReady = true;
+        } catch (_) {
+          themeTransitionReady = false;
+        } finally {
+          root.classList.remove('theme-transition-warmup', 'theme-transition-probe');
+          themeTransitionWarmed = true;
+          themeTransitionWarmupPromise = null;
+        }
+      })();
+      return themeTransitionWarmupPromise;
+    };
+
+    /**
      * 在浏览器支持时使用圆形揭示动画切换明暗模式，否则使用颜色渐变回退。
      *
      * @param {MouseEvent|null} event - 主题按钮的点击事件，用于确定动画起点。
      * @returns {void}
      */
     const toggleTheme = (event = null) => {
+      if (themeTogglePending) return;
+      if (isMacChromium() && !themeTransitionWarmed) {
+        themeTogglePending = true;
+        void warmThemeTransitionEngine().finally(() => {
+          themeTogglePending = false;
+          toggleTheme(null);
+        });
+        return;
+      }
       const nextTheme = resolvedTheme.value === 'dark' ? 'light' : 'dark';
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const applyNextTheme = () => handleThemeChange(nextTheme);
       const root = document.documentElement;
 
-      if (reduceMotion || typeof document.startViewTransition !== 'function') {
+      if (reduceMotion || typeof document.startViewTransition !== 'function'
+          || (isMacChromium() && !themeTransitionReady)) {
         if (themeFallbackTimer) window.clearTimeout(themeFallbackTimer);
         root.classList.add('theme-transition-fallback');
         window.requestAnimationFrame(applyNextTheme);
@@ -467,23 +568,57 @@ const app = createApp({
         return;
       }
 
-      const bounds = event?.currentTarget?.getBoundingClientRect?.();
-      const originX = bounds ? bounds.left + bounds.width / 2 : window.innerWidth - 42;
-      const originY = bounds ? bounds.top + bounds.height / 2 : 42;
-      const radius = Math.hypot(
-        Math.max(originX, window.innerWidth - originX),
-        Math.max(originY, window.innerHeight - originY),
+      const geometry = resolveThemeTransitionGeometry(
+        event,
+        '.theme-toggle-button',
       );
+      // macOS Chromium 的第一次真实根快照使用设备像素，后续快照恢复为 CSS 像素。
+      // Retina 比例仅补偿一次，避免第二次切换的圆心偏移到右上角。
+      const needsRetinaCompensation = isMacChromium()
+        && themeNeedsRetinaCompensation;
+      const snapshotScale = needsRetinaCompensation
+        ? Math.max(1, window.devicePixelRatio || 1)
+        : 1;
+      themeNeedsRetinaCompensation = false;
+      const originX = geometry.originX * snapshotScale;
+      const originY = geometry.originY * snapshotScale;
+      const radius = geometry.radius * snapshotScale;
       root.style.setProperty('--theme-transition-x', `${originX}px`);
       root.style.setProperty('--theme-transition-y', `${originY}px`);
       root.style.setProperty('--theme-transition-radius', `${radius}px`);
       activeThemeTransition?.skipTransition?.();
+      activeThemeAnimation?.cancel?.();
       const transition = document.startViewTransition(applyNextTheme);
       activeThemeTransition = transition;
+      transition.ready
+        .then(() => {
+          const startClip = `circle(0px at ${originX}px ${originY}px)`;
+          const endClip = `circle(${radius + 2}px at ${originX}px ${originY}px)`;
+          try {
+            activeThemeAnimation = root.animate(
+              { clipPath: [startClip, endClip] },
+              {
+                duration: 460,
+                easing: 'cubic-bezier(.22, .72, .18, 1)',
+                fill: 'both',
+                pseudoElement: '::view-transition-new(root)',
+              },
+            );
+          } catch (error) {
+            root.classList.add('theme-view-transition-css');
+            return Promise.resolve(error);
+          }
+          return activeThemeAnimation.finished;
+        })
+        .catch(() => {})
+        .finally(() => { activeThemeAnimation = null; });
       transition.finished
         .catch(() => {})
         .finally(() => {
-          if (activeThemeTransition === transition) activeThemeTransition = null;
+          if (activeThemeTransition === transition) {
+            activeThemeTransition = null;
+            root.classList.remove('theme-view-transition-css');
+          }
         });
     };
     const applyLocale = (locale) => {
@@ -647,6 +782,7 @@ const app = createApp({
       currentTheme.value = localStorage.getItem('theme-preference') || 'auto';
       applyTheme(currentTheme.value);
       applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY) || 'green');
+      void warmThemeTransitionEngine();
       playQiyingDetailArrival();
       const browserLocale = (navigator.language || '').toLowerCase();
       applyLocale(localStorage.getItem('locale-preference') || (browserLocale.startsWith('en') ? 'en' : browserLocale.startsWith('ja') ? 'ja' : 'zh'));
@@ -669,7 +805,11 @@ const app = createApp({
       if (themeFallbackTimer) window.clearTimeout(themeFallbackTimer);
       if (qiyingArrivalTimer) window.clearTimeout(qiyingArrivalTimer);
       document.documentElement.classList.remove('qiying-detail-arrival');
-      document.documentElement.classList.remove('theme-transition-fallback');
+      document.documentElement.classList.remove(
+        'theme-transition-fallback',
+        'theme-transition-warmup',
+        'theme-transition-probe',
+      );
     });
 
     return {
