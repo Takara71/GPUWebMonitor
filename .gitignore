@@ -12,3 +12,6 @@ venv/
 .venv/
 node_modules/
 .DS_Store
+
+# 本机私密运维清单（禁止提交账号、密码与真实网络配置）
+.private/

@@ -178,14 +178,14 @@ def proxy_server_request(
 
     Args:
         server_id: 前端选择的节点 ID；为空时返回参数错误。
-        resource: Agent 资源名称，只允许 ``status`` 或 ``history``。
+        resource: Agent 资源名称，只允许 ``status``、``history`` 或 ``storage``。
 
     Returns:
         Flask 可以直接返回的 JSON 响应或 ``(响应, 状态码)`` 元组。
     """
     if not server_id:
         return jsonify({"code": 400, "msg": "缺少参数: id"}), 400
-    if resource not in {"status", "history"}:
+    if resource not in {"status", "history", "storage"}:
         return jsonify({"code": 404, "msg": "不支持的 Agent 资源"}), 404
 
     config = load_config()
@@ -206,7 +206,7 @@ def proxy_server_request(
         limit = request.args.get('limit', '100')
         target_api = f"{base_url}/api/history?limit={limit}"
     else:
-        target_api = f"{base_url}/api/status"
+        target_api = f"{base_url}/api/{resource}"
 
     try:
         # Public mode verifies HTTPS Agents by default. LAN mode keeps the

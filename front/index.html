@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png" />
   <link rel="stylesheet" href="vendor/element-plus.css" />
-  <link rel="stylesheet" href="style.css?v=20260814-2" />
+  <link rel="stylesheet" href="style.css?v=20260830-3" />
   <script src="vendor/vue.runtime.global.prod.js?v=3.5.39"></script>
   <script src="vendor/element-plus.js"></script>
   <script src="vendor/element-plus-icons.js"></script>
@@ -109,6 +109,10 @@
             <div class="resource-meter">
               <div class="resource-meter__header"><div><strong>{{ translate('resources.memory') }}</strong><span>{{ formatBytes(currentData.system.memory.used) }} / {{ formatBytes(currentData.system.memory.total) }}</span></div><b>{{ formatPercent(currentData.system.memory.percent, 1) }}</b></div>
               <el-progress :percentage="Math.round(currentData.system.memory.percent)" :stroke-width="10" :show-text="false" />
+            </div>
+            <div v-if="currentData.system.storage.total > 0" class="resource-meter">
+              <div class="resource-meter__header"><div><strong>{{ translate('resources.disk') }}</strong><span>{{ formatBytes(currentData.system.storage.used) }} / {{ formatBytes(currentData.system.storage.total) }}</span></div><b>{{ formatPercent(currentData.system.storage.percent, 1) }}</b></div>
+              <el-progress :percentage="Math.round(currentData.system.storage.percent)" :stroke-width="10" :show-text="false" />
             </div>
 
             <div class="network-grid">
@@ -216,6 +220,107 @@
           </article>
         </section>
 
+        <section class="dashboard-section" aria-labelledby="storage-title">
+          <article class="panel storage-panel">
+            <el-collapse v-model="activeStorageSections" class="storage-collapse" @change="handleStorageCollapse">
+              <el-collapse-item name="storage">
+                <template #title>
+                  <div class="storage-heading">
+                    <span class="storage-heading__copy">
+                      <strong id="storage-title">{{ translate('storage.title') }}</strong>
+                      <small v-if="storageData">{{ translate('storage.headerSummary', storageData.summary.mount_count, formatBytes(storageData.summary.total)) }}</small>
+                      <small v-else-if="currentData.system.storage.total > 0">{{ translate('storage.headerSummary', currentData.system.storage.mount_count, formatBytes(currentData.system.storage.total)) }}</small>
+                      <small v-else>{{ translate('storage.collapsed') }}</small>
+                    </span>
+                    <el-button-group class="storage-heading__actions" @click.stop>
+                      <el-button size="small" :type="storageTab === 'overview' ? 'primary' : 'default'" :aria-pressed="storageTab === 'overview'" @click.stop="openStorageTab('overview')">{{ translate('storage.overview') }}</el-button>
+                      <el-button size="small" :type="storageTab === 'users' ? 'primary' : 'default'" :aria-pressed="storageTab === 'users'" @click.stop="openStorageTab('users')">{{ translate('storage.users') }}</el-button>
+                    </el-button-group>
+                  </div>
+                </template>
+
+                <div class="storage-content">
+                  <div v-if="storageLoading && !storageData" class="storage-loading" role="status">
+                    <el-icon class="is-spinning"><Clock /></el-icon>
+                    <span>{{ translate('storage.loading') }}</span>
+                  </div>
+                  <div v-else-if="storageError && !storageData" class="storage-error" role="alert">
+                    <div><el-icon><WarningFilled /></el-icon><span>{{ translate('storage.unavailable') }}</span></div>
+                    <el-button size="small" plain @click="loadStorageData(true)">{{ translate('storage.retry') }}</el-button>
+                  </div>
+                  <template v-else-if="storageData">
+                    <div class="storage-kpi-grid">
+                      <div class="storage-kpi">
+                        <span class="storage-kpi__label">{{ translate('storage.total') }}</span>
+                        <el-icon class="storage-kpi__icon storage-kpi__icon--total" aria-hidden="true"><Coin /></el-icon>
+                        <strong>{{ formatBytes(storageData.summary.total) }}</strong>
+                      </div>
+                      <div class="storage-kpi">
+                        <span class="storage-kpi__label">{{ translate('storage.used') }}</span>
+                        <el-icon class="storage-kpi__icon storage-kpi__icon--used" aria-hidden="true"><PieChart /></el-icon>
+                        <strong>{{ formatBytes(storageData.summary.used) }}</strong>
+                      </div>
+                      <div class="storage-kpi">
+                        <span class="storage-kpi__label">{{ translate('storage.free') }}</span>
+                        <el-icon class="storage-kpi__icon storage-kpi__icon--free" aria-hidden="true"><FolderOpened /></el-icon>
+                        <strong>{{ formatBytes(storageData.summary.free) }}</strong>
+                      </div>
+                      <div class="storage-kpi">
+                        <span class="storage-kpi__label">{{ translate('storage.userCount') }}</span>
+                        <el-icon class="storage-kpi__icon storage-kpi__icon--users" aria-hidden="true"><User /></el-icon>
+                        <strong>{{ storageData.summary.user_count }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="storage-total-meter">
+                      <div><span>{{ translate('storage.totalUsage') }}</span><strong>{{ formatPercent(storageData.summary.percent, 1) }}</strong></div>
+                      <el-progress :percentage="Math.round(storageData.summary.percent)" :stroke-width="12" :show-text="false" />
+                    </div>
+
+                    <el-tabs v-model="storageTab" class="storage-tabs storage-tabs--header-controlled">
+                      <el-tab-pane :label="translate('storage.overview')" name="overview">
+                        <div class="storage-table-wrap">
+                          <el-table :data="storageData.mounts" size="small" max-height="420">
+                            <el-table-column prop="mountpoint" :label="translate('storage.mountpoint')" min-width="150" show-overflow-tooltip><template #default="scope"><code>{{ scope.row.mountpoint }}</code></template></el-table-column>
+                            <el-table-column prop="device" :label="translate('storage.device')" min-width="190" show-overflow-tooltip></el-table-column>
+                            <el-table-column prop="fstype" :label="translate('storage.filesystem')" width="125"></el-table-column>
+                            <el-table-column :label="translate('storage.total')" width="130" align="right"><template #default="scope">{{ formatBytes(scope.row.total) }}</template></el-table-column>
+                            <el-table-column :label="translate('storage.used')" width="130" align="right"><template #default="scope">{{ formatBytes(scope.row.used) }}</template></el-table-column>
+                            <el-table-column :label="translate('storage.percentage')" min-width="190">
+                              <template #default="scope"><div class="storage-row-meter"><el-progress :percentage="Math.round(scope.row.percent)" :stroke-width="8" :show-text="false" /><span>{{ formatPercent(scope.row.percent, 1) }}</span></div></template>
+                            </el-table-column>
+                          </el-table>
+                        </div>
+                      </el-tab-pane>
+
+                      <el-tab-pane :label="translate('storage.users')" name="users">
+                        <p class="storage-scope-note">{{ translate('storage.scopeNote') }}</p>
+                        <div class="storage-table-wrap">
+                          <el-table :data="storageUsers" size="small" :empty-text="translate('storage.emptyUsers')" max-height="460">
+                            <el-table-column type="index" width="58" align="center"></el-table-column>
+                            <el-table-column prop="username" :label="translate('process.user')" min-width="150" show-overflow-tooltip></el-table-column>
+                            <el-table-column :label="translate('storage.usage')" width="150" align="right"><template #default="scope">{{ scope.row.available ? formatBytes(scope.row.used_bytes) : translate('storage.scanUnavailable') }}</template></el-table-column>
+                            <el-table-column :label="translate('storage.percentage')" min-width="210">
+                              <template #default="scope"><div v-if="scope.row.available" class="storage-row-meter"><el-progress :percentage="Math.round(scope.row.percent || 0)" :stroke-width="8" :show-text="false" /><span>{{ formatPercent(scope.row.percent, 2) }}</span></div><span v-else class="text-info">—</span></template>
+                            </el-table-column>
+                            <el-table-column prop="home" :label="translate('storage.home')" min-width="250" show-overflow-tooltip><template #default="scope"><code>{{ scope.row.home }}</code></template></el-table-column>
+                          </el-table>
+                        </div>
+                      </el-tab-pane>
+                    </el-tabs>
+
+                    <div class="storage-meta">
+                      <span>{{ translate('storage.generatedAt') }} · {{ formatDateTime(storageData.generated_at) }}</span>
+                      <span v-if="storageLoading"><el-icon class="is-spinning"><Clock /></el-icon>{{ translate('storage.loading') }}</span>
+                      <span v-else-if="storageError" class="text-warning">{{ translate('storage.unavailable') }}</span>
+                    </div>
+                  </template>
+                </div>
+              </el-collapse-item>
+            </el-collapse>
+          </article>
+        </section>
+
         <section class="dashboard-section" aria-labelledby="gpu-title">
           <div class="section-heading section-heading--inline"><div><span class="eyebrow">Accelerators</span><h2 id="gpu-title">{{ translate('gpu.title') }}</h2></div><span class="count-badge">{{ translate('units.cards', gpuList.length) }}</span></div>
 
@@ -300,7 +405,7 @@
 
     <footer class="footer-copyright"><p>{{ translate('footer.line1') }}</p><p class="icp-record-placeholder">{{ translate('footer.icpPlaceholder') }}</p></footer>
   </div>
-  <script src="app.render.js?v=20260811-4"></script>
-  <script src="app.js?v=20260814-1"></script>
+  <script src="app.render.js?v=20260830-3"></script>
+  <script src="app.js?v=20260830-3"></script>
 </body>
 </html>

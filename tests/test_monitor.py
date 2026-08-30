@@ -1,5 +1,8 @@
 import os
 import sys
+import json
+import tempfile
+import time
 import unittest
 from collections import namedtuple
 from typing import Any
@@ -15,6 +18,8 @@ import app as agent_app
 import dashboard
 import deployment_mode
 import gpu_monitor
+import storage_monitor
+import storage_snapshot
 
 
 CpuTimes = namedtuple("CpuTimes", "user system")
@@ -22,6 +27,8 @@ MemoryInfo = namedtuple("MemoryInfo", "rss")
 VirtualMemory = namedtuple("VirtualMemory", "total available used percent")
 NetIO = namedtuple("NetIO", "bytes_sent bytes_recv")
 CpuFreq = namedtuple("CpuFreq", "current")
+Partition = namedtuple("Partition", "device mountpoint fstype opts")
+DiskUsage = namedtuple("DiskUsage", "total used free percent")
 
 
 class FakeProcess:
@@ -218,6 +225,7 @@ class ProcessCollectionTests(unittest.TestCase):
                 mock.patch.object(gpu_monitor.psutil, "net_io_counters", return_value=NetIO(10, 20)), \
                 mock.patch.object(gpu_monitor.psutil, "cpu_freq", return_value=CpuFreq(2_200)), \
                 mock.patch.object(gpu_monitor.psutil, "cpu_count", return_value=8), \
+                mock.patch.object(gpu_monitor, "collect_filesystem_usage", return_value={"summary": {"total": 2_000, "used": 500, "free": 1_500, "percent": 25.0, "mount_count": 1}, "mounts": []}), \
                 mock.patch.object(gpu_monitor, "get_system_process_usage", return_value={"processes": [], "users": [], "memory_metric": "pss"}) as get_usage:
             info = gpu_monitor.get_system_info()
 
@@ -226,10 +234,112 @@ class ProcessCollectionTests(unittest.TestCase):
         self.assertEqual(info["memory"]["percent"], 65.0)
         self.assertEqual(info["users"], [])
         self.assertEqual(info["process_memory_metric"], "pss")
+        self.assertEqual(info["storage"]["percent"], 25.0)
         get_usage.assert_called_once_with(total_memory=1_000)
 
 
+class StorageCollectionTests(unittest.TestCase):
+    def test_filesystem_totals_exclude_virtual_network_and_duplicate_mounts(self) -> None:
+        """验证总容量只累加本地持久化磁盘且不会重复统计设备。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        partitions = [
+            Partition('/dev/sda2', '/', 'ext4', 'rw'),
+            Partition('/dev/sda1', '/boot/efi', 'vfat', 'rw'),
+            Partition('/dev/sda2', '/srv/bind', 'ext4', 'rw,bind'),
+            Partition('/dev/nvme0n1p1', '/data', 'xfs', 'rw'),
+            Partition('tmpfs', '/run', 'tmpfs', 'rw'),
+            Partition('storage:/share', '/mnt/share', 'nfs4', 'rw'),
+        ]
+        usages = {
+            '/': DiskUsage(1_000, 400, 600, 40),
+            '/srv/bind': DiskUsage(1_000, 400, 600, 40),
+            '/data': DiskUsage(2_000, 500, 1_500, 25),
+        }
+        with mock.patch.object(storage_monitor.psutil, 'disk_partitions', return_value=partitions), \
+                mock.patch.object(storage_monitor.psutil, 'disk_usage', side_effect=lambda path: usages[path]):
+            storage = storage_monitor.collect_filesystem_usage()
+
+        self.assertEqual(storage['summary']['total'], 3_000)
+        self.assertEqual(storage['summary']['used'], 900)
+        self.assertEqual(storage['summary']['mount_count'], 2)
+        self.assertEqual([mount['mountpoint'] for mount in storage['mounts']], ['/', '/data'])
+
+    def test_storage_snapshot_sorts_users_and_marks_failed_scans(self) -> None:
+        """验证用户主目录统计按占用排序并保留无法读取状态。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        filesystems = {
+            'summary': {'total': 10_000, 'used': 4_000, 'free': 6_000, 'percent': 40.0, 'mount_count': 1},
+            'mounts': [],
+        }
+        accounts = [
+            {'username': 'alice', 'uid': 1001, 'home': '/home/alice'},
+            {'username': 'bob', 'uid': 1002, 'home': '/home/bob'},
+            {'username': 'carol', 'uid': 1003, 'home': '/home/carol'},
+        ]
+        usage_by_home = {'/home/alice': 1_000, '/home/bob': 3_000, '/home/carol': None}
+        with mock.patch.object(storage_snapshot, 'collect_filesystem_usage', return_value=filesystems), \
+                mock.patch.object(storage_snapshot, 'list_user_homes', return_value=accounts), \
+                mock.patch.object(storage_snapshot, 'measure_directory_usage', side_effect=lambda path: usage_by_home[path]):
+            snapshot = storage_snapshot.collect_storage_snapshot()
+
+        self.assertEqual([user['username'] for user in snapshot['users']], ['bob', 'alice', 'carol'])
+        self.assertEqual(snapshot['summary']['user_count'], 3)
+        self.assertEqual(snapshot['summary']['scanned_user_count'], 2)
+        self.assertEqual(snapshot['summary']['users_used'], 4_000)
+        self.assertFalse(snapshot['users'][-1]['available'])
+
+    def test_storage_snapshot_loader_rejects_expired_data(self) -> None:
+        """验证 Agent 不会返回超过最大年龄的存储快照。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        payload = {'timestamp': time.time() - 120, 'summary': {}, 'mounts': [], 'users': []}
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot_path = os.path.join(directory, 'storage.json')
+            with open(snapshot_path, 'w', encoding='utf-8') as handle:
+                json.dump(payload, handle)
+            self.assertIsNone(storage_monitor.load_storage_snapshot(snapshot_path, max_age_seconds=60))
+            self.assertIsNotNone(storage_monitor.load_storage_snapshot(snapshot_path, max_age_seconds=180))
+
+
 class AuthenticationTests(unittest.TestCase):
+    def test_storage_api_is_authenticated_and_returns_snapshot(self) -> None:
+        """验证存储快照沿用 Agent 认证且不会并入常规刷新请求。
+
+        Args:
+            无。
+
+        Returns:
+            无返回值。
+        """
+        snapshot = {'timestamp': time.time(), 'summary': {}, 'mounts': [], 'users': []}
+        with mock.patch.object(agent_app, 'DEPLOYMENT_MODE', deployment_mode.PUBLIC_MODE), \
+                mock.patch.object(agent_app, 'AGENT_TOKEN', 'agent-secret'), \
+                mock.patch.object(agent_app, 'load_storage_snapshot', return_value=snapshot):
+            client = agent_app.app.test_client()
+            denied = client.get('/api/storage')
+            allowed = client.get('/api/storage', headers={'Authorization': 'Bearer agent-secret'})
+
+        self.assertEqual(denied.status_code, 401)
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed.get_json()['data'], snapshot)
+
     def test_link_diagnostic_api_is_authenticated_and_redacted(self) -> None:
         """验证链路诊断 API 复用 Agent 认证且只返回安全状态。
 
@@ -405,6 +515,7 @@ class AuthenticationTests(unittest.TestCase):
             legacy_config = client.get("/config.json")
             proxied = client.get("/api/proxy?id=lan-node")
             proxied_node = client.get("/api/nodes/lan-node/status")
+            proxied_storage = client.get("/api/nodes/lan-node/storage")
             proxied_history = client.get("/api/nodes/lan-node/history?limit=25")
 
         self.assertEqual(response.status_code, 200)
@@ -413,6 +524,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(legacy_config.status_code, 200)
         self.assertEqual(proxied.status_code, 200)
         self.assertEqual(proxied_node.status_code, 200)
+        self.assertEqual(proxied_storage.status_code, 200)
         self.assertEqual(proxied_history.status_code, 200)
         self.assertIn("/api/history?limit=25", request_agent.call_args.args[0])
         self.assertEqual(request_agent.call_args.kwargs["headers"], {})

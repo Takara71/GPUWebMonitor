@@ -15,6 +15,8 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 import atexit
 
+from storage_monitor import collect_filesystem_usage
+
 # 日志配置
 logger = logging.getLogger(__name__)
 
@@ -332,6 +334,7 @@ def get_system_info() -> Dict[str, Any]:
         memory_percent = memory_used / memory.total * 100 if memory.total else 0.0
 
         process_usage = get_system_process_usage(total_memory=memory.total)
+        storage_usage = collect_filesystem_usage()['summary']
 
         return {
             'cpu': {
@@ -348,6 +351,7 @@ def get_system_info() -> Dict[str, Any]:
                 'bytes_sent': net_io.bytes_sent,
                 'bytes_recv': net_io.bytes_recv,
             },
+            'storage': storage_usage,
             'processes': process_usage['processes'],
             'users': process_usage['users'],
             'process_memory_metric': process_usage['memory_metric'],

@@ -3,6 +3,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
 const {
   Monitor, Refresh, Download, Upload, Sunny, Moon, Sunrise,
   WarningFilled, CircleCheckFilled, Clock, Connection, DataLine,
+  Coin, PieChart, FolderOpened, User,
 } = ElementPlusIconsVue;
 
 const API_BASE_URL = new URL(
@@ -22,6 +23,7 @@ const app = createApp({
   components: {
     Monitor, Download, Upload, Sunny, Moon, Sunrise,
     WarningFilled, CircleCheckFilled, Clock, Connection, DataLine,
+    Coin, PieChart, FolderOpened, User,
   },
   setup() {
     const RefreshIcon = Refresh;
@@ -40,9 +42,10 @@ const app = createApp({
         relative: { now: '刚刚', seconds: (n) => `${n} 秒前`, minutes: (n) => `${n} 分钟前` },
         theme: { auto: '自动', light: '白天', dark: '夜间' },
         themeMenu: { auto: '跟随系统', light: '白天模式', dark: '夜间模式' },
-        resources: { title: '系统资源', subtitle: '当前负载与累计网络流量', cpu: 'CPU', memory: '内存', totalReceived: '累计接收', totalSent: '累计发送', recentRate: '近期速率', collecting: '正在收集样本', cores: (n) => `${n} 核`, frequency: '当前频率' },
+        resources: { title: '系统资源', subtitle: '当前负载与累计网络流量', cpu: 'CPU', memory: '内存', disk: '硬盘', totalReceived: '累计接收', totalSent: '累计发送', recentRate: '近期速率', collecting: '正在收集样本', cores: (n) => `${n} 核`, frequency: '当前频率' },
         trend: { title: '利用率', subtitle: '本次浏览会话 · 最近 20 个采样点', cpu: 'CPU', memory: '内存', gpu: 'GPU 平均', waiting: '至少需要 2 个样本，趋势将在下次刷新后显示', details: '查看采样数据', time: '时间', ranges: { session: '实时', '10m': '10分钟', '30m': '30分钟', '1h': '1小时', '6h': '6小时', '12h': '12小时' }, historySubtitle: (range) => `历史数据 · 最近 ${range}`, loadingHistory: '正在加载历史数据...' },
         systemProcess: { title: '系统进程', count: (groups, instances) => groups === instances ? `${groups} 个高占用进程` : `${groups} 组 · ${instances} 个实例`, userCount: (n) => `${n} 个用户`, sortCpu: '按 CPU 排序', sortMemory: '按内存排序', sortUser: '按用户汇总', instances: '实例 / PID', instanceCount: '进程实例', groups: '进程组', cpu: '总 CPU 占用', memory: 'PSS 占用', note: '相同用户、进程名和完整命令已合并；CPU 为整机总容量占比，PSS 会按比例分摊共享内存，支持跨进程相加。', userNote: '用户汇总基于该节点全部进程；点击 CPU 或 PSS 表头可切换排名。', empty: '当前没有可显示的系统进程', emptyUser: '当前没有可显示的用户占用数据' },
+        storage: { title: '存储空间', collapsed: '容量统计待加载', headerSummary: (mounts, total) => `${mounts} 块盘 · ${total} 总容量`, overview: '磁盘概览', users: '按用户统计', total: '总容量', used: '已使用', free: '可用空间', userCount: '用户数量', totalUsage: '总空间使用率', mountpoint: '挂载点', device: '设备', filesystem: '文件系统', usage: '占用空间', percentage: '占总容量', home: '主目录', generatedAt: '统计时间', scopeNote: '用户占用按普通登录用户主目录实际占用的磁盘块统计。', loading: '正在读取存储统计…', unavailable: '暂时无法读取存储统计', retry: '重新读取', emptyUsers: '当前没有可统计的普通用户', scanUnavailable: '无法统计' },
         gpu: { title: 'GPU 设备', subtitle: '逐卡负载、热状态与进程', emptyTitle: '当前节点未检测到 GPU', emptyDesc: '系统资源仍可正常查看，请确认 NVIDIA 驱动与 NVML 状态。', utilization: '核心利用率', vram: '显存占用', temperature: '温度', power: '实时功耗', powerLimit: '功耗上限', fan: '风扇转速', memoryUtil: '显存控制器', normal: '温度正常', warm: '温度偏高', critical: '温度危险', unknown: '温度未知' },
         process: { title: '计算进程', count: (n) => `${n} 个进程`, pid: 'PID', user: '用户', name: '进程名', memory: '显存占用', command: '命令', empty: '该 GPU 暂无活跃计算进程' },
         units: { cards: (n) => `${n} 张`, unavailable: '不可用' },
@@ -57,9 +60,10 @@ const app = createApp({
         relative: { now: 'just now', seconds: (n) => `${n}s ago`, minutes: (n) => `${n}m ago` },
         theme: { auto: 'Auto', light: 'Light', dark: 'Dark' },
         themeMenu: { auto: 'Follow system', light: 'Light mode', dark: 'Dark mode' },
-        resources: { title: 'System resources', subtitle: 'Current load and cumulative network traffic', cpu: 'CPU', memory: 'Memory', totalReceived: 'Total received', totalSent: 'Total sent', recentRate: 'Recent rate', collecting: 'Collecting samples', cores: (n) => `${n} cores`, frequency: 'Current frequency' },
+        resources: { title: 'System resources', subtitle: 'Current load and cumulative network traffic', cpu: 'CPU', memory: 'Memory', disk: 'Storage', totalReceived: 'Total received', totalSent: 'Total sent', recentRate: 'Recent rate', collecting: 'Collecting samples', cores: (n) => `${n} cores`, frequency: 'Current frequency' },
         trend: { title: 'Utilization', subtitle: 'This browser session · latest 20 samples', cpu: 'CPU', memory: 'Memory', gpu: 'GPU average', waiting: 'At least 2 samples are needed. The trend will appear after the next refresh.', details: 'View sample data', time: 'Time', ranges: { session: 'Live', '10m': '10min', '30m': '30min', '1h': '1h', '6h': '6h', '12h': '12h' }, historySubtitle: (range) => `History · last ${range}`, loadingHistory: 'Loading history...' },
         systemProcess: { title: 'System processes', count: (groups, instances) => groups === instances ? `${groups} high-usage processes` : `${groups} groups · ${instances} instances`, userCount: (n) => `${n} users`, sortCpu: 'Sort by CPU', sortMemory: 'Sort by memory', sortUser: 'Group by user', instances: 'Instances / PID', instanceCount: 'Instances', groups: 'Process groups', cpu: 'Total CPU', memory: 'PSS memory', note: 'Same user, process name, and full command are merged. CPU is a share of total machine capacity; PSS proportionally distributes shared memory and is safe to sum.', userNote: 'User totals cover all processes on the node. Click the CPU or PSS heading to change the ranking.', empty: 'No system process is available', emptyUser: 'No user usage data is available' },
+        storage: { title: 'Storage', collapsed: 'Capacity pending', headerSummary: (mounts, total) => `${mounts} disks · ${total} total`, overview: 'Disk overview', users: 'By user', total: 'Total', used: 'Used', free: 'Available', userCount: 'Users', totalUsage: 'Total storage usage', mountpoint: 'Mount point', device: 'Device', filesystem: 'Filesystem', usage: 'Space used', percentage: 'Share of total', home: 'Home directory', generatedAt: 'Collected', scopeNote: 'User usage is the allocated disk space inside each regular login user’s home directory.', loading: 'Loading storage statistics…', unavailable: 'Storage statistics are temporarily unavailable', retry: 'Try again', emptyUsers: 'No regular user can be measured', scanUnavailable: 'Unavailable' },
         gpu: { title: 'GPU devices', subtitle: 'Per-device workload, thermal state, and processes', emptyTitle: 'No GPU detected on this node', emptyDesc: 'System resources remain available. Check the NVIDIA driver and NVML status.', utilization: 'Core utilization', vram: 'VRAM used', temperature: 'Temperature', power: 'Live power', powerLimit: 'Power limit', fan: 'Fan speed', memoryUtil: 'Memory controller', normal: 'Temperature normal', warm: 'Temperature high', critical: 'Temperature critical', unknown: 'Temperature unavailable' },
         process: { title: 'Compute processes', count: (n) => `${n} processes`, pid: 'PID', user: 'User', name: 'Process', memory: 'GPU memory', command: 'Command', empty: 'No active compute process on this GPU' },
         units: { cards: (n) => `${n} cards`, unavailable: 'Unavailable' },
@@ -74,9 +78,10 @@ const app = createApp({
         relative: { now: 'たった今', seconds: (n) => `${n} 秒前`, minutes: (n) => `${n} 分前` },
         theme: { auto: '自動', light: 'ライト', dark: 'ダーク' },
         themeMenu: { auto: 'システムに従う', light: 'ライトモード', dark: 'ダークモード' },
-        resources: { title: 'システムリソース', subtitle: '現在の負荷と累積ネットワーク通信量', cpu: 'CPU', memory: 'メモリ', totalReceived: '累積受信', totalSent: '累積送信', recentRate: '直近の速度', collecting: 'サンプル収集中', cores: (n) => `${n} コア`, frequency: '現在の周波数' },
+        resources: { title: 'システムリソース', subtitle: '現在の負荷と累積ネットワーク通信量', cpu: 'CPU', memory: 'メモリ', disk: 'ストレージ', totalReceived: '累積受信', totalSent: '累積送信', recentRate: '直近の速度', collecting: 'サンプル収集中', cores: (n) => `${n} コア`, frequency: '現在の周波数' },
         trend: { title: '使用率', subtitle: 'このブラウザーセッション · 最新 20 サンプル', cpu: 'CPU', memory: 'メモリ', gpu: 'GPU 平均', waiting: '2 件以上のサンプルが必要です。次回更新後に表示されます。', details: 'サンプルデータを表示', time: '時刻', ranges: { session: 'リアルタイム', '10m': '10分', '30m': '30分', '1h': '1時間', '6h': '6時間', '12h': '12時間' }, historySubtitle: (range) => `履歴データ · 直近 ${range}`, loadingHistory: '履歴データを読み込み中...' },
         systemProcess: { title: 'システムプロセス', count: (groups, instances) => groups === instances ? `高負荷 ${groups} プロセス` : `${groups} グループ · ${instances} インスタンス`, userCount: (n) => `${n} ユーザー`, sortCpu: 'CPU 順', sortMemory: 'メモリ順', sortUser: 'ユーザー集計', instances: 'インスタンス / PID', instanceCount: 'インスタンス', groups: 'プロセスグループ', cpu: '合計 CPU', memory: 'PSS メモリ', note: '同じユーザー、プロセス名、完全なコマンドを統合しています。CPU はマシン全体に対する割合、PSS は共有メモリを比例配分するため合計できます。', userNote: 'ユーザー集計はノード上の全プロセスが対象です。CPU または PSS の見出しをクリックして順位を切り替えられます。', empty: '表示できるシステムプロセスはありません', emptyUser: 'ユーザー使用量データがありません' },
+        storage: { title: 'ストレージ', collapsed: '容量を取得中', headerSummary: (mounts, total) => `${mounts} 台 · 合計 ${total}`, overview: 'ディスク概要', users: 'ユーザー別', total: '総容量', used: '使用済み', free: '空き容量', userCount: 'ユーザー数', totalUsage: '全体使用率', mountpoint: 'マウント先', device: 'デバイス', filesystem: 'ファイルシステム', usage: '使用容量', percentage: '総容量比', home: 'ホームディレクトリ', generatedAt: '集計時刻', scopeNote: 'ユーザー使用量は通常ログインユーザーのホームディレクトリが実際に使用するディスクブロックです。', loading: 'ストレージ統計を読み込み中…', unavailable: 'ストレージ統計を取得できません', retry: '再読み込み', emptyUsers: '集計対象の通常ユーザーがいません', scanUnavailable: '取得不可' },
         gpu: { title: 'GPU デバイス', subtitle: 'デバイス別の負荷、温度、プロセス', emptyTitle: 'このノードで GPU が検出されません', emptyDesc: 'システムリソースは表示できます。NVIDIA ドライバーと NVML を確認してください。', utilization: 'コア使用率', vram: 'VRAM 使用量', temperature: '温度', power: '現在の電力', powerLimit: '電力上限', fan: 'ファン速度', memoryUtil: 'メモリコントローラー', normal: '温度正常', warm: '温度高め', critical: '温度危険', unknown: '温度不明' },
         process: { title: '計算プロセス', count: (n) => `${n} プロセス`, pid: 'PID', user: 'ユーザー', name: 'プロセス', memory: 'GPU メモリ', command: 'コマンド', empty: 'この GPU にアクティブな計算プロセスはありません' },
         units: { cards: (n) => `${n} 枚`, unavailable: '利用不可' },
@@ -109,7 +114,14 @@ const app = createApp({
     const historySamples = ref([]);
     const historyLoading = ref(false);
     const systemProcessSort = ref('cpu');
+    const activeStorageSections = ref([]);
+    const storageTab = ref('overview');
+    const storageDataByServer = ref({});
+    const storageLoading = ref(false);
+    const storageError = ref('');
     let historyAbortController = null;
+    let storageAbortController = null;
+    let storageRequestSequence = 0;
     let freshnessTimer = null;
     let themeMediaQuery = null;
     let themeMediaListener = null;
@@ -162,6 +174,10 @@ const app = createApp({
       return processes.sort((a, b) => (b.cpu_percent - a.cpu_percent) || (b.memory_bytes - a.memory_bytes));
     });
     const systemUsers = computed(() => currentData.value?.system?.users || []);
+    const storageData = computed(() => storageDataByServer.value[selectedServerId.value] || null);
+    const storageUsers = computed(() => [...(storageData.value?.users || [])].sort(
+      (a, b) => (safeNumber(b.used_bytes) - safeNumber(a.used_bytes)) || a.username.localeCompare(b.username),
+    ));
     const systemProcessInstanceCount = computed(() => sortedSystemProcesses.value.reduce(
       (sum, process) => sum + Math.max(1, safeNumber(process.instance_count)),
       0,
@@ -194,6 +210,10 @@ const app = createApp({
     const formatFrequency = (mhz) => finiteNumber(mhz) === null ? translate('units.unavailable') : `${formatNumber(mhz / 1000, 1)} GHz`;
     const formatPower = (milliwatts) => finiteNumber(milliwatts) === null ? translate('units.unavailable') : `${formatNumber(milliwatts / 1000, 0)} W`;
     const formatTemperature = (value) => finiteNumber(value) === null ? translate('units.unavailable') : `${formatNumber(value, 0)} °C`;
+    const formatDateTime = (value) => {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? translate('units.unavailable') : date.toLocaleString(localeMap[currentLocale.value].htmlLang, { hour12: false });
+    };
     const formatProcessInstances = (process) => process.instance_count > 1 ? `${process.instance_count} ×` : `${process.pid}`;
     const formatProcessPids = (process) => (process.pids || [process.pid]).map((pid) => `PID ${pid}`).join(', ');
     const calcMemoryPercent = (gpu) => {
@@ -215,6 +235,7 @@ const app = createApp({
       const cpu = system.cpu || {};
       const memory = system.memory || {};
       const network = system.network || {};
+      const storage = system.storage || {};
       const systemProcesses = Array.isArray(system.processes) ? system.processes.map((process) => {
         const pid = process?.pid ?? '—';
         const pids = Array.isArray(process?.pids) && process.pids.length ? process.pids : [pid];
@@ -269,6 +290,7 @@ const app = createApp({
         system: {
           cpu: { percent: clampPercent(cpu.percent), count: finiteNumber(cpu.count, 0), frequency_current: finiteNumber(cpu.frequency_current) },
           memory: { percent: clampPercent(memory.percent), used: finiteNumber(memory.used, 0), total: finiteNumber(memory.total, 0) },
+          storage: { percent: clampPercent(storage.percent), used: finiteNumber(storage.used, 0), free: finiteNumber(storage.free, 0), total: finiteNumber(storage.total, 0), mount_count: finiteNumber(storage.mount_count, 0) },
           network: { bytes_recv: finiteNumber(network.bytes_recv, 0), bytes_sent: finiteNumber(network.bytes_sent, 0) },
           processes: systemProcesses,
           users: systemUsers,
@@ -281,6 +303,41 @@ const app = createApp({
           total_processes: finiteNumber(summary.total_processes, derived.total_processes),
         } },
         timestamp: raw.timestamp || new Date().toISOString(),
+      };
+    };
+
+    const normalizeStorageData = (raw = {}) => {
+      const summary = raw.summary || {};
+      const mounts = Array.isArray(raw.mounts) ? raw.mounts.map((mount) => ({
+        device: mount?.device || '—',
+        mountpoint: mount?.mountpoint || '—',
+        fstype: mount?.fstype || '—',
+        total: Math.max(0, safeNumber(mount?.total)),
+        used: Math.max(0, safeNumber(mount?.used)),
+        free: Math.max(0, safeNumber(mount?.free)),
+        percent: clampPercent(mount?.percent),
+      })) : [];
+      const users = Array.isArray(raw.users) ? raw.users.map((user) => ({
+        username: user?.username || '—',
+        uid: finiteNumber(user?.uid),
+        home: user?.home || '—',
+        used_bytes: finiteNumber(user?.used_bytes),
+        percent: finiteNumber(user?.percent),
+        available: user?.available !== false && finiteNumber(user?.used_bytes) !== null,
+      })) : [];
+      return {
+        generated_at: raw.generated_at || (raw.timestamp ? new Date(raw.timestamp * 1000).toISOString() : null),
+        summary: {
+          total: Math.max(0, safeNumber(summary.total)),
+          used: Math.max(0, safeNumber(summary.used)),
+          free: Math.max(0, safeNumber(summary.free)),
+          percent: clampPercent(summary.percent),
+          mount_count: Math.max(0, safeNumber(summary.mount_count || mounts.length)),
+          user_count: Math.max(0, safeNumber(summary.user_count || users.length)),
+          scanned_user_count: Math.max(0, safeNumber(summary.scanned_user_count)),
+        },
+        mounts,
+        users,
       };
     };
 
@@ -656,6 +713,51 @@ const app = createApp({
       const existing = samplesByServer.value[serverId] || [];
       samplesByServer.value = { ...samplesByServer.value, [serverId]: [...existing, sample].slice(-MAX_SAMPLES) };
     };
+
+    const loadStorageData = async (force = false) => {
+      const serverId = selectedServerId.value;
+      if (!serverId || !selectedServer.value) return;
+      if (!force && storageDataByServer.value[serverId]) return;
+      if (!force && storageLoading.value) return;
+      storageAbortController?.abort();
+      const controller = new AbortController();
+      storageAbortController = controller;
+      const sequence = ++storageRequestSequence;
+      storageLoading.value = true;
+      storageError.value = '';
+      try {
+        const response = await fetchApi(`/api/nodes/${encodeURIComponent(serverId)}/storage`, { signal: controller.signal });
+        const result = await readResponse(response);
+        if (result.code !== 200) throw new Error(result.msg || `API ${result.code}`);
+        if (sequence !== storageRequestSequence || selectedServerId.value !== serverId) return;
+        storageDataByServer.value = {
+          ...storageDataByServer.value,
+          [serverId]: normalizeStorageData(result.data),
+        };
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        if (sequence !== storageRequestSequence || selectedServerId.value !== serverId) return;
+        storageError.value = error.message || translate('storage.unavailable');
+      } finally {
+        if (sequence === storageRequestSequence) {
+          storageLoading.value = false;
+          storageAbortController = null;
+        }
+      }
+    };
+
+    const handleStorageCollapse = (activeNames) => {
+      const names = Array.isArray(activeNames) ? activeNames : [activeNames];
+      if (names.includes('storage')) void loadStorageData(false);
+    };
+    const openStorageTab = (tab) => {
+      if (tab !== 'overview' && tab !== 'users') return;
+      storageTab.value = tab;
+      if (!activeStorageSections.value.includes('storage')) {
+        activeStorageSections.value = ['storage'];
+      }
+      void loadStorageData(false);
+    };
     const clearRefreshTimer = () => {
       if (refreshTimer.value) window.clearTimeout(refreshTimer.value);
       refreshTimer.value = null;
@@ -741,12 +843,23 @@ const app = createApp({
       window.history.replaceState(null, '', url);
       requestSequence.value += 1;
       requestController.value?.abort();
+      storageRequestSequence += 1;
+      storageAbortController?.abort();
+      storageAbortController = null;
+      storageLoading.value = false;
+      storageError.value = '';
+      activeStorageSections.value = [];
+      storageTab.value = 'overview';
       nodeError.value = '';
       lastUpdateAt.value = null;
       currentData.value = dataByServer.value[selectedServerId.value] || null;
       loadSelectedServerData('initial');
     };
-    const refreshCurrent = () => loadSelectedServerData('manual');
+    const refreshCurrent = () => {
+      const statusRequest = loadSelectedServerData('manual');
+      if (activeStorageSections.value.includes('storage')) void loadStorageData(true);
+      return statusRequest;
+    };
     const toggleAutoRefresh = () => {
       localStorage.setItem(AUTO_REFRESH_STORAGE_KEY, String(autoRefresh.value));
       if (autoRefresh.value) scheduleRefresh();
@@ -799,6 +912,7 @@ const app = createApp({
     onUnmounted(() => {
       clearRefreshTimer();
       requestController.value?.abort();
+      storageAbortController?.abort();
       if (freshnessTimer) window.clearInterval(freshnessTimer);
       if (themeMediaQuery && themeMediaListener) themeMediaQuery.removeEventListener('change', themeMediaListener);
       if (colorThemeStorageListener) window.removeEventListener('storage', colorThemeStorageListener);
@@ -814,12 +928,13 @@ const app = createApp({
 
     return {
       servers, selectedServerId, selectedServer, currentData, gpuList, sortedSystemProcesses, systemUsers, systemProcessInstanceCount, systemProcessSort, loading, configLoading, configError, nodeError,
+      activeStorageSections, storageTab, storageData, storageUsers, storageLoading, storageError,
       autoRefresh, currentLocale, currentTheme, resolvedTheme, localeText, themeIcon, RefreshIcon,
       currentSamples, networkRates, trendSeries, activeTrendSample, connectionState, relativeUpdate, lastUpdateTime,
       trendRange, trendRanges, historyLoading,
-      translate, safeNumber, formatNumber, formatPercent, formatBytes, formatFrequency, formatPower, formatTemperature, formatProcessInstances, formatProcessPids,
+      translate, safeNumber, formatNumber, formatPercent, formatBytes, formatFrequency, formatPower, formatTemperature, formatDateTime, formatProcessInstances, formatProcessPids,
       calcMemoryPercent, getTempStatus, getValColorClass, getTemperatureState,
-      updateTrendHover, clearTrendHover, setTrendRange, setSystemProcessSort,
+      updateTrendHover, clearTrendHover, setTrendRange, setSystemProcessSort, handleStorageCollapse, openStorageTab, loadStorageData,
       serverDisplayName, toggleTheme, handleLocaleChange, handleServerChange, refreshCurrent, toggleAutoRefresh, loadConfig,
     };
   },

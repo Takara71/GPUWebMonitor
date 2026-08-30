@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh GPU Monitor storage usage snapshot
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=15min
+AccuracySec=30s
+Persistent=true
+Unit=gpu-monitor-storage-snapshot.service
+
+[Install]
+WantedBy=timers.target

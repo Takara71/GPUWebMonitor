@@ -1,0 +1,33 @@
+[Unit]
+Description=GPU Monitor privileged storage usage snapshot
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+Group=@SERVICE_GROUP@
+ExecStart=@PYTHON@ @APP_ROOT@/backend/storage_snapshot.py --output /run/gpuwebmonitor-storage/storage.json
+RuntimeDirectory=gpuwebmonitor-storage
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+UMask=0022
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=10
+IOWeight=10
+TimeoutStartSec=15min
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native

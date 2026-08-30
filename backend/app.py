@@ -11,6 +11,7 @@ from typing import Any
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from deployment_mode import LAN_MODE, load_deployment_mode
+from storage_monitor import load_storage_snapshot
 
 # 假设 gpu_monitor 存在于路径中
 try:
@@ -283,6 +284,22 @@ def get_current_status() -> Any:
         return jsonify({"code": 200, "data": data, "msg": "success"})
     except Exception as e:
         return jsonify({"code": 500, "msg": str(e)}), 500
+
+
+@app.route('/api/storage', methods=['GET'])
+def get_storage_status() -> Any:
+    """返回按低优先级特权任务生成的存储与用户占用快照。
+
+    Args:
+        无。
+
+    Returns:
+        快照可用时返回存储 JSON；尚未生成或已过期时返回 HTTP 503。
+    """
+    snapshot = load_storage_snapshot()
+    if snapshot is None:
+        return jsonify({"code": 503, "msg": "Storage snapshot unavailable"}), 503
+    return jsonify({"code": 200, "data": snapshot, "msg": "success"})
 
 
 def load_link_diagnostic_state() -> dict[str, Any] | None:
