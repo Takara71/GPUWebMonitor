@@ -1,0 +1,27 @@
+[Unit]
+Description=Observe-only SSH feature correlation and risk scoring
+After=network.target
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/frp-ssh-features/receiver.py serve
+Restart=always
+RestartSec=5
+User=root
+UMask=0077
+StateDirectory=frp-ssh-features
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/frp-ssh-features
+MemoryMax=192M
+CPUQuota=20%
+TasksMax=16
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Explicit opt-in: do not inject VirtualGL into Vulkan or ordinary applications.
+unset LIBGL_ALWAYS_SOFTWARE
+exec /opt/VirtualGL/bin/vglrun -d "${LAB_OPENGL_DEVICE:-egl0}" "$@"

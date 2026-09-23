@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png" />
   <link rel="stylesheet" href="vendor/element-plus.css" />
-  <link rel="stylesheet" href="style.css?v=20260830-3" />
+  <link rel="stylesheet" href="style.css?v=20260909-1" />
   <script src="vendor/vue.runtime.global.prod.js?v=3.5.39"></script>
   <script src="vendor/element-plus.js"></script>
   <script src="vendor/element-plus-icons.js"></script>
@@ -403,9 +403,13 @@
       </section>
     </main>
 
-    <footer class="footer-copyright"><p>{{ translate('footer.line1') }}</p><p class="icp-record-placeholder">{{ translate('footer.icpPlaceholder') }}</p></footer>
+    <footer class="footer-copyright">
+      <p>{{ translate('footer.line1') }}</p>
+      <p><a class="icp-record" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ translate('footer.icpRecord') }}</a></p>
+      <p><a class="police-record" href="https://beian.mps.gov.cn/#/query/webSearch?code=YOUR_REGISTRATION_CODE" target="_blank" rel="noopener noreferrer"><img src="police-record.png" alt="" width="18" height="20" />{{ translate('footer.policeRecord') }}</a></p>
+    </footer>
   </div>
-  <script src="app.render.js?v=20260830-3"></script>
-  <script src="app.js?v=20260830-3"></script>
+  <script src="app.render.js?v=20260909-1"></script>
+  <script src="app.js?v=20260909-1"></script>
 </body>
 </html>

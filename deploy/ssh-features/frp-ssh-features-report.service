@@ -1,0 +1,6 @@
+[Unit]
+Description=Daily SSH feature observation report
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/frp-ssh-features/receiver.py report
+UMask=0077

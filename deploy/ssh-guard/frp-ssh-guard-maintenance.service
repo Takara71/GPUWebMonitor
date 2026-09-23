@@ -1,0 +1,6 @@
+[Unit]
+Description=Fail closed when geographic data expires
+After=frp-ssh-guard.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/frp-ssh-guard/guard.py maintenance

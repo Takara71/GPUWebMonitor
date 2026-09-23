@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OpenGL GPU 加速启动
+Comment=选择或输入需要使用 NVIDIA OpenGL 的程序
+Exec=/usr/local/bin/lab-opengl xfce4-appfinder --disable-server
+Icon=applications-graphics
+Terminal=false
+Categories=Graphics;

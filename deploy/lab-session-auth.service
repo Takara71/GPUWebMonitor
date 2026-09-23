@@ -1,5 +1,5 @@
 [Unit]
-Description=Lab status session authentication
+Description=Lab school email OTP authentication
 After=network.target
 Before=nginx.service
 
@@ -7,7 +7,9 @@ Before=nginx.service
 Type=simple
 User=www-data
 Group=www-data
-ExecStart=/usr/bin/python3 /opt/lab-status/session_auth.py --host 127.0.0.1 --port 28458 --htpasswd /etc/nginx/.htpasswd-lab-monitor --secret-file /etc/lab-status/session-secret
+ExecStart=/usr/bin/python3 /opt/lab-status/email_auth.py --host 127.0.0.1 --port 28458
+StateDirectory=lab-email-auth
+StateDirectoryMode=0700
 Restart=on-failure
 RestartSec=3s
 UMask=0077

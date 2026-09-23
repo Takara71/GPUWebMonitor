@@ -1,0 +1,14 @@
+[Unit]
+Description=Refresh offline Hefei IP ranges
+After=network-online.target frp-ssh-guard.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/frp-ssh-guard/update_geo.py
+TimeoutStartSec=10min
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/frp-ssh-guard
+CapabilityBoundingSet=CAP_NET_ADMIN

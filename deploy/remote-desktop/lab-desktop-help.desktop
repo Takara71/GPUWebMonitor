@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=远程桌面使用说明
+Exec=xfce4-terminal --disable-server --hold -e "cat /opt/lab-desktop/DESKTOP-HELP.txt"
+Icon=help-browser
+Terminal=false

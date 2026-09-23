@@ -37,8 +37,8 @@ const TRANSLATIONS = {
     clientProbe: { button: '本机延迟测试', openAria: '测试本机到 GPU 节点的延迟', closeAria: '关闭本机延迟测试', title: '本机延迟测试', description: '当前设备 ↔ GPU 节点', average: '平均', p95: 'P95', minimum: '最小', maximum: '最大', jitter: '抖动', failed: '测试失败', unauthorized: '登录已失效，请重新登录。' },
     latency: { title: '节点质量', average: '平均延迟', p95: 'P95 延迟', maximum: '最大延迟', jitter: '平均抖动', availability: '24 小时探测可用率', failures: '连接失败', failureCount: (value) => `${value} 次`, openAria: '查看节点质量趋势', closeAria: '关闭节点质量趋势', chartAria: '最近二十四小时节点延迟与失败时段图', empty: '最近 24 小时暂无节点延迟样本', successLegend: '成功连接', degradedLegend: '部分探测失败', offlineLegend: '完全无法连接', unavailable: '无法连接', bucketAvailability: (value) => `该时段可用率：${value}`, bucketMaximum: (value) => `该时段最大延迟：${value}` },
     incident: { title: '故障记录', count: (value) => `${value} 条`, empty: '近期无故障记录', ongoing: (duration) => `持续中 · ${duration}` },
-    auth: { loginResource: '登录查看资源占用', viewResource: '查看资源占用', secureAccess: '安全访问', title: '用户登录', close: '关闭登录框', description: '登录以查看GPU服务器的详细资源和进程信息', username: '用户名', password: '密码', remember: '保持登录 30 天', submit: '安全登录', submitting: '正在验证…', invalid: '用户名或密码错误。', locked: (seconds) => `尝试次数过多，请在 ${seconds} 秒后重试。`, failed: '登录服务暂时不可用，请稍后重试。' },
-    footer: { description: '实验室基础设施状态 · 详细资源信息需要登录', icpPlaceholder: 'ICP备案信息（待补充）', waiting: '等待首次检测', checked: (time) => `最后检测：${time}` },
+    auth: { loginResource: '登录查看资源占用', viewResource: '查看资源占用', secureAccess: '安全访问', title: '用户登录', close: '关闭登录框', description: '登录以查看GPU服务器的详细资源和进程信息', username: '账号', password: '验证码', remember: '保持登录 30 天', submit: '安全登录', submitting: '正在验证…', invalid: '验证码无效或已过期，请重新获取。', locked: (seconds) => `尝试次数过多，请在 ${seconds} 秒后重试。`, failed: '登录服务暂时不可用，请稍后重试。' },
+    footer: { description: '实验室基础设施状态 · 详细资源信息需要登录', icpRecord: 'ICP备案号（部署时填写）', policeRecord: '公安备案号（部署时填写）', waiting: '等待首次检测', checked: (time) => `最后检测：${time}` },
     errors: { load: (message) => `暂时无法读取状态数据：${message}` },
     duration: { seconds: (value) => `${value} 秒`, minutes: (value) => `${value} 分钟`, hours: (value) => `${value} 小时`, days: (value) => `${value} 天` },
   },
@@ -56,8 +56,8 @@ const TRANSLATIONS = {
     clientProbe: { button: 'Local latency test', openAria: 'Test latency from this device to GPU nodes', closeAria: 'Close local latency test', title: 'Local latency test', description: 'This device ↔ GPU node', average: 'Average', p95: 'P95', minimum: 'Minimum', maximum: 'Maximum', jitter: 'Jitter', failed: 'Test failed', unauthorized: 'Your session has expired. Please sign in again.' },
     latency: { title: 'Node quality', average: 'Average latency', p95: 'P95 latency', maximum: 'Maximum latency', jitter: 'Average jitter', availability: '24-hour probe availability', failures: 'Failed connections', failureCount: (value) => `${value}`, openAria: 'View node quality', closeAria: 'Close node quality', chartAria: 'Node latency and failures for the last 24 hours', empty: 'No node latency samples in the last 24 hours', successLegend: 'Successful connection', degradedLegend: 'Partial failures', offlineLegend: 'Unreachable', unavailable: 'Unreachable', bucketAvailability: (value) => `Period availability: ${value}`, bucketMaximum: (value) => `Period maximum: ${value}` },
     incident: { title: 'Incidents', count: (value) => `${value}`, empty: 'No recent incidents', ongoing: (duration) => `Ongoing · ${duration}` },
-    auth: { loginResource: 'Sign in for resource usage', viewResource: 'View resource usage', secureAccess: 'SECURE ACCESS', title: 'User Sign In', close: 'Close sign-in dialog', description: 'Sign in to view detailed GPU server resources and process information.', username: 'Username', password: 'Password', remember: 'Keep me signed in for 30 days', submit: 'Secure sign in', submitting: 'Verifying…', invalid: 'Incorrect username or password.', locked: (seconds) => `Too many attempts. Try again in ${seconds} seconds.`, failed: 'The sign-in service is temporarily unavailable.' },
-    footer: { description: 'Lab infrastructure status · detailed resource data requires sign-in', icpPlaceholder: 'ICP filing information (pending)', waiting: 'Waiting for the first check', checked: (time) => `Last check: ${time}` },
+    auth: { loginResource: 'Sign in for resource usage', viewResource: 'View resource usage', secureAccess: 'SECURE ACCESS', title: 'User Sign In', close: 'Close sign-in dialog', description: 'Sign in to view detailed GPU server resources and process information.', username: 'Account', password: 'Verification code', remember: 'Keep me signed in for 30 days', submit: 'Secure sign in', submitting: 'Verifying…', invalid: 'Invalid or expired verification code.', locked: (seconds) => `Too many attempts. Try again in ${seconds} seconds.`, failed: 'The sign-in service is temporarily unavailable.' },
+    footer: { description: 'Lab infrastructure status · detailed resource data requires sign-in', icpRecord: 'ICP备案号（部署时填写）', policeRecord: '公安备案号（部署时填写）', waiting: 'Waiting for the first check', checked: (time) => `Last check: ${time}` },
     errors: { load: (message) => `Unable to load status data: ${message}` },
     duration: { seconds: (value) => `${value}s`, minutes: (value) => `${value}m`, hours: (value) => `${value}h`, days: (value) => `${value}d` },
   },
@@ -75,12 +75,28 @@ const TRANSLATIONS = {
     clientProbe: { button: '端末遅延テスト', openAria: 'この端末から GPU ノードまでの遅延を測定', closeAria: '端末遅延テストを閉じる', title: '端末遅延テスト', description: 'この端末 ↔ GPU ノード', average: '平均', p95: 'P95', minimum: '最小', maximum: '最大', jitter: 'ジッター', failed: 'テスト失敗', unauthorized: 'ログインの有効期限が切れました。再度ログインしてください。' },
     latency: { title: 'ノード品質', average: '平均遅延', p95: 'P95 遅延', maximum: '最大遅延', jitter: '平均ジッター', availability: '24 時間のプローブ稼働率', failures: '接続失敗', failureCount: (value) => `${value} 回`, openAria: 'ノード品質を表示', closeAria: 'ノード品質を閉じる', chartAria: '過去 24 時間のノード遅延と障害時間帯', empty: '過去 24 時間のノード遅延サンプルはありません', successLegend: '接続成功', degradedLegend: '一部失敗', offlineLegend: '接続不能', unavailable: '接続不能', bucketAvailability: (value) => `時間帯の稼働率：${value}`, bucketMaximum: (value) => `時間帯の最大遅延：${value}` },
     incident: { title: '障害履歴', count: (value) => `${value} 件`, empty: '最近の障害はありません', ongoing: (duration) => `継続中 · ${duration}` },
-    auth: { loginResource: 'ログインして使用状況を表示', viewResource: 'リソース使用状況を表示', secureAccess: '安全なアクセス', title: 'ユーザーログイン', close: 'ログイン画面を閉じる', description: 'ログインすると、GPU サーバーの詳細なリソースとプロセス情報を確認できます。', username: 'ユーザー名', password: 'パスワード', remember: '30 日間ログイン状態を保持', submit: '安全にログイン', submitting: '確認中…', invalid: 'ユーザー名またはパスワードが正しくありません。', locked: (seconds) => `試行回数が多すぎます。${seconds} 秒後に再試行してください。`, failed: 'ログインサービスは一時的に利用できません。' },
-    footer: { description: 'ラボ基盤の状態 · 詳細なリソース情報にはログインが必要です', icpPlaceholder: 'ICP 届出情報（準備中）', waiting: '最初の確認を待っています', checked: (time) => `最終確認：${time}` },
+    auth: { loginResource: 'ログインして使用状況を表示', viewResource: 'リソース使用状況を表示', secureAccess: '安全なアクセス', title: 'ユーザーログイン', close: 'ログイン画面を閉じる', description: 'ログインすると、GPU サーバーの詳細なリソースとプロセス情報を確認できます。', username: 'アカウント', password: '確認コード', remember: '30 日間ログイン状態を保持', submit: '安全にログイン', submitting: '確認中…', invalid: '確認コードが無効、または期限切れです。', locked: (seconds) => `試行回数が多すぎます。${seconds} 秒後に再試行してください。`, failed: 'ログインサービスは一時的に利用できません。' },
+    footer: { description: 'ラボ基盤の状態 · 詳細なリソース情報にはログインが必要です', icpRecord: 'ICP备案号（部署时填写）', policeRecord: '公安备案号（部署时填写）', waiting: '最初の確認を待っています', checked: (time) => `最終確認：${time}` },
     errors: { load: (message) => `状態データを読み込めません：${message}` },
     duration: { seconds: (value) => `${value} 秒`, minutes: (value) => `${value} 分`, hours: (value) => `${value} 時間`, days: (value) => `${value} 日` },
   },
 };
+
+Object.assign(TRANSLATIONS.zh.auth, {description: '输入账号与验证码以继续', sendCode: '发送验证码', sent: '请求已处理，60 秒后可重新获取。', sending: '正在处理…', cooldown: (n) => `${n} 秒后重新获取`});
+Object.assign(TRANSLATIONS.en.auth, {description: 'Enter your account and verification code to continue.', sendCode: 'Send code', sent: 'Request processed. You can request a code again in 60 seconds.', sending: 'Processing…', cooldown: (n) => `Retry in ${n}s`});
+Object.assign(TRANSLATIONS.ja.auth, {description: 'アカウントと確認コードを入力してください。', sendCode: 'コードを送信', sent: 'リクエストを処理しました。60 秒後に再取得できます。', sending: '処理中…', cooldown: (n) => `${n} 秒後に再送`});
+
+const SECURITY_TEXT = {
+  zh: { open: '查看 SSH 安全状态', title: 'SSH 安全状态', close: '关闭安全状态', refresh: '刷新数据', loading: '正在读取安全数据…', error: '暂时无法读取安全数据，请重试。', today: '今日密码验证失败', recent: '近 10 分钟密码失败', sources: '已关联公网来源', invalid: '今日无效用户名事件', matched: '已关联公网来源的密码失败', unmatched: '未关联公网来源的密码失败', low: '暂无明显异常', medium: '需要关注', high: '高风险活动', unknown: '数据待确认', basis: '判定依据', events: '最近密码验证失败', empty: '今日暂无已记录的密码验证失败', unlinked: '公网来源未关联', date: '统计日期', updated: '最后同步', scope: '北京时间 00:00 起 · 根据今日已采集 SSH 日志', note: '密码失败可能来自输错密码，不代表已被入侵。来源未关联的记录仍计入失败次数。', mode: '密码失败：自动封禁 · 指纹群组：观察模式', stale: '采集数据已过期，请勿将旧数据视为当前状态。', syncing: '正在同步今日日志，当前统计尚未完整。', sourceStale: '公网来源采集暂未更新，来源关联可能不完整。', unknownMethod: '另有认证方式尚未确认的失败记录，未计入密码失败。', reasons: { recent_failures: '近 10 分钟发生密码验证失败', high_failure_activity: '高频失败或高分来源活动', elevated_activity: '近期失败活动达到关注阈值', related_sources: '发现多来源相似尝试行为', no_recent_anomaly: '近 10 分钟未记录密码验证失败', source_collection_stale: '公网来源采集更新延迟', collection_stale: '服务器采集数据更新延迟', syncing: '今日日志正在同步' } },
+  en: { open: 'View SSH security', title: 'SSH security', close: 'Close security details', refresh: 'Refresh', loading: 'Loading security data…', error: 'Security data is unavailable. Please retry.', today: 'Password failures today', recent: 'Password failures · 10 min', sources: 'Attributed public sources', invalid: 'Invalid-user events today', matched: 'Password failures with a public source', unmatched: 'Password failures without a public source', low: 'No clear anomaly', medium: 'Needs attention', high: 'High-risk activity', unknown: 'Data unconfirmed', basis: 'Assessment', events: 'Recent password failures', empty: 'No password failures recorded today', unlinked: 'Public source not attributed', date: 'Date', updated: 'Last sync', scope: 'Since 00:00 China time · Collected SSH logs', note: 'A password failure may be a typo and does not prove a breach. Unattributed events are still counted.', mode: 'Password failures: automatic bans · Fingerprint groups: observation', stale: 'Collection is stale; these are not current readings.', syncing: 'Today’s logs are syncing; counts are incomplete.', sourceStale: 'Public-source collection is delayed; attribution may be incomplete.', unknownMethod: 'Additional failures with an unknown authentication method are excluded from the password count.', reasons: { recent_failures: 'Password failures in the last 10 minutes', high_failure_activity: 'Frequent failures or high-scoring source activity', elevated_activity: 'Recent failure activity needs attention', related_sources: 'Similar attempts from multiple sources', no_recent_anomaly: 'No password failures recorded in the last 10 minutes', source_collection_stale: 'Public-source collection is delayed', collection_stale: 'Server collection is delayed', syncing: 'Today’s logs are syncing' } },
+  ja: { open: 'SSH セキュリティを確認', title: 'SSH セキュリティ', close: 'セキュリティ情報を閉じる', refresh: '更新', loading: 'セキュリティ情報を取得中…', error: '情報を取得できません。再試行してください。', today: '本日のパスワード認証失敗', recent: '過去 10 分の認証失敗', sources: '関連付け済み公開 IP', invalid: '本日の無効ユーザーイベント', matched: '公開 IP を関連付けた認証失敗', unmatched: '公開 IP 未関連付けの認証失敗', low: '明確な異常なし', medium: '要確認', high: '高リスクの活動', unknown: 'データ未確認', basis: '判定理由', events: '最近のパスワード認証失敗', empty: '本日の認証失敗の記録はありません', unlinked: '公開 IP 未関連付け', date: '集計日', updated: '最終同期', scope: '中国時間 00:00 以降 · 収集済み SSH ログ', note: '認証失敗は入力ミスの場合もあり、侵入成功を意味しません。IP 未関連付けの記録も集計します。', mode: '認証失敗：自動遮断 · 指紋グループ：観察', stale: '収集データが古くなっています。', syncing: '本日のログを同期中です。集計は未完了です。', sourceStale: '公開 IP の収集が遅延しています。', unknownMethod: '認証方式不明の失敗はパスワード失敗数に含めません。', reasons: { recent_failures: '過去 10 分にパスワード認証失敗を記録', high_failure_activity: '高頻度の失敗または高スコアの接続元', elevated_activity: '最近の認証失敗に要注意', related_sources: '複数の接続元で類似の試行', no_recent_anomaly: '過去 10 分に認証失敗の記録なし', source_collection_stale: '公開 IP の収集が遅延', collection_stale: 'サーバーの収集が遅延', syncing: '本日のログを同期中' } },
+};
+const BLACKLIST_TEXT = {
+  zh: { title: '查看完整黑名单', scope: '三台服务器共用公网 SSH 黑名单；另列 VPS 管理入口封禁。仅显示尚未到期的记录，点击“刷新数据”更新。', empty: '当前没有生效中的封禁', error: '暂时无法读取黑名单，请刷新重试', forward: '三台服务器 SSH', admin: 'VPS 管理 SSH', permanent: '永久封禁', remaining: '剩余', minutes: '分钟', authentication: '密码失败 / 无效账号累计', guard: '连接或认证防护规则', until: '到期' },
+  en: { title: 'View full blacklist', scope: 'Shared public SSH blacklist for all three servers, plus VPS administration bans. Only unexpired records are listed. Refresh to update.', empty: 'No active bans', error: 'Blacklist unavailable. Please refresh.', forward: 'All three servers · SSH', admin: 'VPS admin · SSH', permanent: 'Permanent', remaining: 'Remaining', minutes: 'min', authentication: 'Repeated password failures / invalid accounts', guard: 'Connection or authentication guard', until: 'Expires' },
+  ja: { title: 'ブラックリストをすべて表示', scope: '3 台共通の公開 SSH 遮断と VPS 管理用 SSH 遮断を表示します。有効期限内の記録のみ表示。更新ボタンで再取得できます。', empty: '有効な遮断はありません', error: '取得できません。更新してください。', forward: '3 台の SSH', admin: 'VPS 管理 SSH', permanent: '永久遮断', remaining: '残り', minutes: '分', authentication: '認証失敗・無効アカウントの累積', guard: '接続・認証の保護ルール', until: '期限' }
+};
+Object.keys(SECURITY_TEXT).forEach((locale) => { TRANSLATIONS[locale].security = SECURITY_TEXT[locale]; });
 
 const pageState = {
   locale: 'zh',
@@ -99,6 +115,7 @@ const pageState = {
   nextRefreshAt: 0,
   loading: false,
   authenticated: false,
+  desktopStates: {}, desktopStatusLoading: false, desktopRequestVersion: 0,
   pendingDetailUrl: '',
   pendingDetailNodeId: '',
   qiyingThemeTimeouts: [],
@@ -118,6 +135,7 @@ const pageState = {
   latencyDialogNode: null,
   sshCommands: {},
   sshRequestVersion: 0,
+  securityData: null, securityNode: null, securityRequestVersion: 0, securityLoading: false, securityError: false, securityController: null, securityLoadedAt: 0,
 };
 
 /**
@@ -349,6 +367,7 @@ function createNodeCard(node) {
     const currentCommand = pageState.authenticated ? pageState.sshCommands[card.dataset.nodeId] : '';
     if (currentCommand) void copySshCommand(copyButton, currentCommand);
   });
+  card.querySelector('.security-button').addEventListener('click', () => openSecurityDialog(card.statusNode));
   updateNodeCard(card, node);
   return card;
 }
@@ -436,6 +455,8 @@ function updateNodeCard(card, node) {
   const sshCommand = pageState.authenticated ? pageState.sshCommands[node.id] : '';
   copyButton.hidden = !sshCommand;
   copyButton.title = sshCommand ? `${translate('ssh.copyAria')}：${sshCommand}` : translate('ssh.copyAria');
+  updateDesktopButton(card);
+  updateSecurityButton(card);
   invalidateQiyingCardSnapshot(card);
 }
 
@@ -478,6 +499,8 @@ function renderNodes(nodes) {
     insertionPoint = card.nextElementSibling;
   });
   if (pageState.authenticated) {
+    void loadDesktopStates();
+    void loadSecurityData();
     void loadResourcePreviews();
     prefetchDetailDocuments();
     scheduleQiyingCardWarmup();
@@ -948,6 +971,7 @@ function applyLocale(locale, persist = true) {
   if (pageState.latencyDialogNode && document.querySelector('#latency-dialog').open) {
     renderLatencyChart(pageState.latencyDialogNode);
   }
+  if (pageState.securityNode) renderSecurityDialog();
   updateRefreshLabel();
   if (persist) localStorage.setItem(LOCALE_STORAGE_KEY, pageState.locale);
 }
@@ -1494,6 +1518,14 @@ async function loadSshCommands() {
  */
 function applyAuthenticationState(authenticated) {
   pageState.authenticated = authenticated;
+  if (!authenticated) {
+    pageState.desktopRequestVersion += 1; pageState.desktopStates = {};
+    pageState.securityRequestVersion += 1;
+    pageState.securityController?.abort();
+    pageState.securityData = null; pageState.securityLoadedAt = 0; pageState.securityLoading = false;
+    document.querySelector('#security-dialog')?.close();
+    document.querySelector('#security-content')?.replaceChildren();
+  }
   pageState.resourceRequestVersion += 1;
   pageState.sshRequestVersion += 1;
   if (!authenticated) pageState.sshCommands = {};
@@ -1505,7 +1537,11 @@ function applyAuthenticationState(authenticated) {
     card.querySelector('.resource-preview').hidden = !authenticated;
   });
   updateSshButtons();
+  document.querySelectorAll('.node-card').forEach(updateSecurityButton);
+  document.querySelectorAll('.node-card').forEach(updateDesktopButton);
   if (authenticated) {
+    void loadDesktopStates();
+    void loadSecurityData();
     void loadResourcePreviews();
     void loadSshCommands();
     prefetchDetailDocuments();
@@ -2026,6 +2062,30 @@ function handleDetailLinkClick(event) {
  * @param {SubmitEvent} event - 登录表单提交事件。
  * @returns {Promise<void>} 登录请求完成时兑现的 Promise。
  */
+let mailRequestPending = false;
+function updateMailCooldown() {
+  const button = document.querySelector('#login-send-code');
+  if (!button) return;
+  const left = Math.max(0, Math.ceil((Number(localStorage.getItem('lab-mail-next') || 0) - Date.now()) / 1000));
+  button.disabled = mailRequestPending || left > 0;
+  button.textContent = mailRequestPending ? translate('auth.sending') : left ? translate('auth.cooldown', left) : translate('auth.sendCode');
+}
+async function requestLoginCode() {
+  if (mailRequestPending || Number(localStorage.getItem('lab-mail-next') || 0) > Date.now()) return;
+  mailRequestPending = true; updateMailCooldown();
+  const note = document.querySelector('#login-code-note');
+  try {
+    const response = await fetch('/auth/request-code', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: document.querySelector('#login-username').value})});
+    if (!response.ok) throw new Error('request_failed');
+    localStorage.setItem('lab-mail-next', String(Date.now() + 60000));
+    note.textContent = translate('auth.sent');
+  } catch (_) {
+    note.textContent = translate('auth.failed');
+  } finally {
+    note.hidden = false; mailRequestPending = false; updateMailCooldown();
+  }
+}
+
 async function submitLogin(event) {
   event.preventDefault();
   const submitButton = document.querySelector('#login-submit');
@@ -2040,7 +2100,7 @@ async function submitLogin(event) {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password: passwordInput.value, remember: document.querySelector('#login-remember').checked }),
+      body: JSON.stringify({ username, code: passwordInput.value, remember: document.querySelector('#login-remember').checked }),
     });
     const documentData = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -2071,6 +2131,7 @@ async function submitLogin(event) {
  * @returns {Promise<void>} 退出请求完成时兑现的 Promise。
  */
 async function logout() {
+  localStorage.setItem('lab-desktop-logout', String(Date.now()));
   try {
     await fetch(LOGOUT_ENDPOINT, { method: 'POST', credentials: 'same-origin' });
   } finally {
@@ -2108,10 +2169,18 @@ async function initializePage() {
   document.querySelector('#theme-button').addEventListener('click', toggleTheme);
   document.querySelector('#logout-button').addEventListener('click', () => void logout());
   document.querySelector('#login-close').addEventListener('click', () => document.querySelector('#login-dialog').close());
+  document.querySelector('#login-send-code').addEventListener('click', () => void requestLoginCode());
+  window.setInterval(updateMailCooldown, 1000);
+  updateMailCooldown();
   document.querySelector('#login-form').addEventListener('submit', (event) => void submitLogin(event));
   document.querySelector('#login-dialog').addEventListener('click', (event) => {
     if (event.target === event.currentTarget) event.currentTarget.close();
   });
+  const securityDialog = document.querySelector('#security-dialog');
+  document.querySelector('#security-close').addEventListener('click', () => securityDialog.close());
+  document.querySelector('#security-refresh').addEventListener('click', () => void loadSecurityData(true));
+  securityDialog.addEventListener('click', (event) => { if (event.target === securityDialog) securityDialog.close(); });
+  securityDialog.addEventListener('close', () => { pageState.securityNode = null; });
   const latencyDialog = document.querySelector('#latency-dialog');
   document.querySelector('#latency-dialog-close').addEventListener('click', () => latencyDialog.close());
   latencyDialog.addEventListener('click', (event) => {
@@ -2158,3 +2227,161 @@ async function initializePage() {
 }
 
 void initializePage();
+
+function updateSecurityButton(card) {
+  const button = card.querySelector('.security-button');
+  if (!button) return;
+  button.hidden = !pageState.authenticated;
+  const entry = pageState.securityData?.nodes?.[card.dataset.nodeId];
+  const recent = pageState.securityData && Date.now() / 1000 - pageState.securityData.generated_at < 120;
+  const risk = entry && recent && !pageState.securityError ? entry.risk : 'unknown';
+  button.dataset.risk = risk;
+  button.title = `${translate('security.open')} · ${translate(`security.${risk}`)}`;
+}
+
+async function loadSecurityData(force = false) {
+  if (!pageState.authenticated || pageState.securityLoading) return;
+  if (!force && Date.now() - pageState.securityLoadedAt < 30000) return;
+  const version = ++pageState.securityRequestVersion;
+  const controller = new AbortController();
+  pageState.securityController = controller;
+  pageState.securityLoading = true;
+  pageState.securityError = false;
+  if (pageState.securityNode) renderSecurityDialog();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch('/monitor/api/security', { cache: 'no-store', credentials: 'same-origin', signal: controller.signal });
+    if (version !== pageState.securityRequestVersion || !pageState.authenticated) return;
+    if (response.status === 401 || response.status === 403) { applyAuthenticationState(false); return; }
+    if (!response.ok) throw new Error('Security data unavailable');
+    const data = await response.json();
+    if (!data.nodes || typeof data.generated_at !== 'number') throw new Error('Invalid security data');
+    if (version !== pageState.securityRequestVersion || !pageState.authenticated) return;
+    pageState.securityData = data;
+    pageState.securityLoadedAt = Date.now();
+  } catch (_) {
+    if (version === pageState.securityRequestVersion) pageState.securityError = true;
+  } finally {
+    clearTimeout(timeout);
+    if (version === pageState.securityRequestVersion) {
+      pageState.securityLoading = false;
+      document.querySelectorAll('.node-card').forEach(updateSecurityButton);
+      if (pageState.securityNode) renderSecurityDialog();
+    }
+  }
+}
+
+function openSecurityDialog(node) {
+  if (!pageState.authenticated || !node) return;
+  pageState.securityNode = node;
+  renderSecurityDialog();
+  const dialog = document.querySelector('#security-dialog');
+  if (!dialog.open) dialog.showModal();
+  void loadSecurityData(true);
+}
+
+function blacklistReason(ban, locale) {
+  const e = ban.evidence || {};
+  const zh = locale === 'zh'; const ja = locale === 'ja';
+  let text;
+  if (e.counts) {
+    const c = e.counts;
+    text = zh ? `密码失败：近 10 分钟 ${c['600'] || 0} 次、1 小时 ${c['3600'] || 0} 次、24 小时 ${c['86400'] || 0} 次` : ja ? `認証失敗：10 分 ${c['600'] || 0} 回・1 時間 ${c['3600'] || 0} 回・24 時間 ${c['86400'] || 0} 回` : `Password failures: ${c['600'] || 0} in 10 min, ${c['3600'] || 0} in 1 hour, ${c['86400'] || 0} in 24 hours`;
+    if (e.invalid_usernames_1h) text += zh ? `；1 小时尝试 ${e.invalid_usernames_1h} 个不存在的账号` : ja ? `。1 時間に無効アカウント ${e.invalid_usernames_1h} 件` : `; ${e.invalid_usernames_1h} distinct invalid accounts in 1 hour`;
+  } else if (e.kind === 'connection_limit') {
+    text = zh ? `${e.window_seconds} 秒内 ${e.count} 条 SSH 建连报文触发频率或并发限制（含可能的重传，不是密码失败次数）` : ja ? `${e.window_seconds} 秒以内に SSH 接続パケット ${e.count} 件が頻度・同時接続制限に該当（再送を含む場合あり、認証失敗数ではありません）` : `${e.count} SSH connection packets hit rate/concurrency limits within ${e.window_seconds}s (may include retransmissions; not password failures)`;
+  } else if (e.kind === 'admin_password') {
+    text = zh ? `VPS 管理 SSH 在 ${e.window_seconds / 60} 分钟内密码失败 ${e.count} 次` : ja ? `VPS 管理 SSH：${e.window_seconds / 60} 分以内に認証失敗 ${e.count} 回` : `VPS admin SSH: ${e.count} password failures in ${e.window_seconds / 60} min`;
+  } else {
+    text = zh ? '触发 SSH 防护规则；旧记录未保存具体触发次数' : ja ? 'SSH 保護ルールに該当。旧記録には詳細回数なし' : 'SSH guard triggered; detailed counts were not saved for this older record';
+  }
+  if (ban.ban_count_24h > 1) text += zh ? `。24 小时内第 ${ban.ban_count_24h} 次封禁，已递进延长封禁时间` : ja ? `。24 時間以内 ${ban.ban_count_24h} 回目の遮断のため期間を延長` : `. Ban ${ban.ban_count_24h} within 24 hours; duration escalated`;
+  return text;
+}
+
+function renderSecurityDialog() {
+  if (!pageState.authenticated || !pageState.securityNode) return;
+  const content = document.querySelector('#security-content');
+  content.replaceChildren();
+  document.querySelector('#security-node').textContent = nodeDisplayName(pageState.securityNode);
+  document.querySelector('#security-refresh').disabled = pageState.securityLoading;
+  const add = (parent, tag, text, className = '') => {
+    const el = document.createElement(tag); el.textContent = text; el.className = className; parent.append(el); return el;
+  };
+  const data = pageState.securityData;
+  const entry = data?.nodes?.[pageState.securityNode.id];
+  if (pageState.securityError || !entry) {
+    add(content, 'p', translate(pageState.securityLoading ? 'security.loading' : 'security.error'), 'security-note');
+    return;
+  }
+  const overview = add(content, 'div', '', 'security-overview');
+  const risk = add(overview, 'span', translate(`security.${entry.risk}`), 'security-risk'); risk.dataset.risk = entry.risk;
+  add(overview, 'span', translate('security.mode'), 'security-mode');
+  add(content, 'p', `${data.date} · ${translate('security.scope')}`, 'security-meta');
+  if (!entry.fresh) add(content, 'p', translate('security.stale'), 'security-warning');
+  else if (!entry.synchronized) add(content, 'p', translate('security.syncing'), 'security-warning');
+  if (!entry.source_collection_fresh) add(content, 'p', translate('security.sourceStale'), 'security-warning');
+  const stats = add(content, 'div', '', 'security-stats');
+  [['today', entry.password_failures_today], ['recent', entry.password_failures_recent], ['sources', entry.unique_public_sources], ['invalid', entry.invalid_user_events]].forEach(([label, value]) => {
+    const stat = add(stats, 'div', '', 'security-stat'); add(stat, 'span', translate(`security.${label}`)); add(stat, 'strong', Number(value).toLocaleString(LOCALES[pageState.locale].htmlLang));
+  });
+  const details = add(content, 'div', '', 'security-details');
+  [['matched', entry.matched_password_failures], ['unmatched', entry.unmatched_password_failures]].forEach(([label, value]) => {
+    const row = add(details, 'div', ''); add(row, 'span', translate(`security.${label}`)); add(row, 'strong', String(value));
+  });
+  if (entry.unknown_method_failures) add(content, 'p', `${entry.unknown_method_failures} · ${translate('security.unknownMethod')}`, 'security-note');
+  const bt = BLACKLIST_TEXT[pageState.locale] || BLACKLIST_TEXT.zh;
+  const blacklist = data.blacklist;
+  const listDetails = add(content, 'details', '', 'security-blacklist');
+  add(listDetails, 'summary', `${bt.title}${blacklist?.available ? ` (${blacklist.count})` : ''}`);
+  add(listDetails, 'p', bt.scope, 'security-note');
+  const list = add(listDetails, 'div', '', 'security-blacklist-items');
+  if (!blacklist?.available) add(list, 'p', bt.error, 'security-warning');
+  else if (!blacklist.items.length) add(list, 'p', bt.empty, 'security-note');
+  else blacklist.items.forEach((ban) => {
+    const row = add(list, 'article', '', 'security-blacklist-row');
+    add(row, 'code', ban.ip);
+    add(row, 'span', bt[ban.scope], 'security-note');
+    add(row, 'span', blacklistReason(ban, pageState.locale), 'security-note');
+    const expiry = ban.until ? `${bt.remaining} ${Math.max(1, Math.ceil(ban.remaining_seconds / 60))} ${bt.minutes} · ${bt.until} ${new Intl.DateTimeFormat(LOCALES[pageState.locale].htmlLang, { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ban.until * 1000))} (UTC+8)` : bt.permanent;
+    add(row, 'span', expiry, 'security-note');
+  });
+  add(content, 'h3', translate('security.basis'), 'security-subtitle');
+  const reasons = add(content, 'ul', '', 'security-reasons');
+  (entry.reasons || []).forEach((reason) => add(reasons, 'li', `${translate(`security.reasons.${reason.code}`)}${reason.count === undefined ? '' : ` (${reason.count})`}`));
+  add(content, 'h3', translate('security.events'), 'security-subtitle');
+  const events = add(content, 'div', '', 'security-events');
+  const formatTime = (ts) => new Intl.DateTimeFormat(LOCALES[pageState.locale].htmlLang, { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(ts * 1000));
+  if (!entry.recent_events.length) add(events, 'p', translate('security.empty'), 'security-note');
+  entry.recent_events.forEach((event) => {
+    const row = add(events, 'div', '', 'security-event'); add(row, 'time', formatTime(event.time)); add(row, 'span', event.source || translate('security.unlinked'));
+  });
+  add(content, 'p', translate('security.note'), 'security-note');
+  add(content, 'p', `${translate('security.updated')} · ${entry.updated_at ? formatTime(entry.updated_at) : '—'} (UTC+8)`, 'security-meta');
+}
+
+function updateDesktopButton(card) {
+  const button = card.querySelector('.desktop-button');
+  if (!button) return;
+  button.hidden = !pageState.authenticated;
+  if (!pageState.authenticated) { button.removeAttribute('href'); button.removeAttribute('data-occupied'); return; }
+  button.href = `/desktop/?node=${encodeURIComponent(card.dataset.nodeId)}`;
+  const state = pageState.desktopStates[card.dataset.nodeId];
+  button.dataset.occupied = String(Boolean(state?.occupied));
+  const labels = { zh: ['远程桌面', '占用账号', '桌面已登录'], en: ['Remote desktop', 'Occupied by', 'Desktop account'], ja: ['リモートデスクトップ', '使用中', 'デスクトップのアカウント'] }[pageState.locale];
+  button.title = state?.occupied ? `${labels[0]} · ${labels[1]}: ${state.account}` : (state?.desktop_account ? `${labels[0]} · ${labels[2]}: ${state.desktop_account}` : labels[0]);
+  button.setAttribute('aria-label', button.title);
+}
+async function loadDesktopStates() {
+  if (!pageState.authenticated || pageState.desktopStatusLoading) return;
+  const version = pageState.desktopRequestVersion;
+  pageState.desktopStatusLoading = true;
+  try {
+    const response = await fetch('/desktop/api/status', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(12000) });
+    if (response.status === 401) { if (version === pageState.desktopRequestVersion) applyAuthenticationState(false); return; }
+    if (!response.ok) return;
+    const data = await response.json();
+    if (pageState.authenticated && version === pageState.desktopRequestVersion) { pageState.desktopStates = data.nodes || {}; document.querySelectorAll('.node-card').forEach(updateDesktopButton); }
+  } catch (_) {} finally { pageState.desktopStatusLoading = false; }
+}
+setInterval(() => { if (!document.hidden) void loadDesktopStates(); }, 15000);

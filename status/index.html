@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=20260811" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260811" />
   <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png?v=20260811" />
-  <link rel="stylesheet" href="/status-assets/status.css?v=50" />
+  <link rel="stylesheet" href="/status-assets/status.css?v=20260924-login-style-1" />
 </head>
 <body>
   <div class="qiying-transition" id="qiying-transition" aria-hidden="true">
@@ -139,7 +139,8 @@
     <footer>
       <div>
         <span data-i18n="footer.description">实验室基础设施状态 · 详细资源信息需要登录</span>
-        <span class="icp-record-placeholder" data-i18n="footer.icpPlaceholder">ICP备案信息（待补充）</span>
+        <a class="icp-record" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" data-i18n="footer.icpRecord">ICP备案号（部署时填写）</a>
+        <a class="police-record" href="https://beian.mps.gov.cn/#/query/webSearch?code=YOUR_REGISTRATION_CODE" target="_blank" rel="noopener noreferrer"><img src="/status-assets/police-record.png" alt="" width="18" height="20" /><span data-i18n="footer.policeRecord">公安备案号（部署时填写）</span></a>
       </div>
       <span id="footer-time" data-i18n="footer.waiting">等待首次检测</span>
     </footer>
@@ -159,9 +160,17 @@
               </button>
               <span class="copy-feedback" hidden data-i18n="ssh.copied">已复制</span>
             </span>
+            <button class="security-button" type="button" hidden aria-label="查看 SSH 安全状态" data-i18n-aria="security.open" title="查看 SSH 安全状态" aria-haspopup="dialog">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5.5"></path><circle class="security-dot" cx="12" cy="16.5" r=".8"></circle></svg>
+            </button>
           </div>
         </div>
-        <span class="status-badge"><i></i><span class="status-text"></span></span>
+        <div class="node-actions">
+          <span class="status-badge"><i></i><span class="status-text"></span></span>
+          <a class="desktop-button" hidden target="_blank" rel="noopener" aria-label="打开远程桌面" title="远程桌面（验证服务器账号后连接）">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>
+          </a>
+        </div>
       </div>
       <div class="metric-grid">
         <button class="metric-card latency-metric" type="button" aria-label="查看响应时间趋势" data-i18n-aria="latency.openAria">
@@ -206,7 +215,7 @@
     <section class="latency-dialog-panel">
       <div class="latency-dialog-heading">
         <div><h2 id="latency-dialog-title" data-i18n="latency.title">节点质量</h2><p id="latency-dialog-node"></p></div>
-        <button class="dialog-close" id="latency-dialog-close" type="button" aria-label="关闭响应时间趋势" data-i18n-aria="latency.closeAria">×</button>
+        <button class="dialog-close" id="latency-dialog-close" type="button" aria-label="关闭响应时间趋势" data-i18n-aria="latency.closeAria"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="latency-chart-summary">
         <span><small data-i18n="latency.average">平均延迟</small><strong id="latency-dialog-average">—</strong></span>
@@ -232,9 +241,20 @@
     <section class="client-probe-panel">
       <div class="latency-dialog-heading">
         <div><h2 id="client-probe-title" data-i18n="clientProbe.title">本机延迟测试</h2><p data-i18n="clientProbe.description">当前设备 ↔ GPU 节点</p></div>
-        <button class="dialog-close" id="client-probe-close" type="button" aria-label="关闭本机延迟测试" data-i18n-aria="clientProbe.closeAria">×</button>
+        <button class="dialog-close" id="client-probe-close" type="button" aria-label="关闭本机延迟测试" data-i18n-aria="clientProbe.closeAria"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="client-probe-results" id="client-probe-results"></div>
+    </section>
+  </dialog>
+
+  <dialog class="security-dialog" id="security-dialog" aria-labelledby="security-title">
+    <section class="security-panel">
+      <div class="latency-dialog-heading">
+        <div><h2 id="security-title" data-i18n="security.title">SSH 安全状态</h2><p id="security-node"></p></div>
+        <button class="dialog-close" id="security-close" type="button" data-i18n-aria="security.close" aria-label="关闭安全状态"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
+      </div>
+      <div id="security-content" aria-live="polite"></div>
+      <button class="security-refresh" id="security-refresh" type="button" data-i18n="security.refresh">刷新数据</button>
     </section>
   </dialog>
 
@@ -242,17 +262,24 @@
     <form class="login-form" id="login-form">
       <div class="login-heading">
         <div><span class="login-kicker" data-i18n="auth.secureAccess">SECURE ACCESS</span><h2 id="login-title" data-i18n="auth.title">用户登录</h2></div>
-        <button class="dialog-close" id="login-close" type="button" aria-label="关闭登录框" data-i18n-aria="auth.close">×</button>
+        <button class="dialog-close" id="login-close" type="button" aria-label="关闭登录框" data-i18n-aria="auth.close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
       </div>
-      <p class="login-description" data-i18n="auth.description">登录以查看GPU服务器的详细资源和进程信息</p>
-      <label><span data-i18n="auth.username">用户名</span><input id="login-username" name="username" type="text" autocomplete="username" maxlength="128" required /></label>
-      <label><span data-i18n="auth.password">密码</span><input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="512" required /></label>
+      <p class="login-description" data-i18n="auth.description">输入账号与验证码以继续</p>
+      <label><span data-i18n="auth.username">账号</span><input id="login-username" name="username" type="text" autocomplete="username" maxlength="128" autocapitalize="none" spellcheck="false" /></label>
+      <div class="login-code-field">
+        <label for="login-password" data-i18n="auth.password">验证码</label>
+        <div class="login-code-control">
+          <input id="login-password" name="code" type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="8" required />
+          <button class="login-code-button" id="login-send-code" type="button" data-i18n="auth.sendCode">发送验证码</button>
+        </div>
+      </div>
+      <p class="login-code-note" id="login-code-note" role="status" hidden></p>
       <label class="remember-row"><input id="login-remember" name="remember" type="checkbox" /><span data-i18n="auth.remember">保持登录 30 天</span></label>
       <p class="login-message" id="login-message" role="alert" hidden></p>
       <button class="login-submit" id="login-submit" type="submit" data-i18n="auth.submit">安全登录</button>
     </form>
   </dialog>
 
-  <script src="/status-assets/status.js?v=45" defer></script>
+  <script src="/status-assets/status.js?v=20260924-login-style-1" defer></script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+{
+  "access_key_id": "REPLACE_WITH_RAM_ACCESS_KEY_ID",
+  "access_key_secret": "REPLACE_WITH_RAM_ACCESS_KEY_SECRET",
+  "region": "cn-hangzhou",
+  "sender": "login@mail.example.com",
+  "recipient_domain": "students.example.edu",
+  "endpoint": "https://dm.aliyuncs.com/"
+}

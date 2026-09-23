@@ -1,0 +1,31 @@
+[Unit]
+Description=Passive SSH handshake and authentication metadata collector
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/frp-ssh-features/agent.py
+Restart=always
+RestartSec=5
+User=root
+UMask=0077
+Environment=XDG_CONFIG_HOME=/var/lib/frp-ssh-features/config
+LimitCORE=0
+StateDirectory=frp-ssh-features
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_PACKET AF_NETLINK
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+ReadWritePaths=/var/lib/frp-ssh-features
+MemoryMax=384M
+CPUQuota=20%
+TasksMax=32
+Nice=10
+[Install]
+WantedBy=multi-user.target

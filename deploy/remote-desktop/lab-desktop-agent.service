@@ -1,0 +1,24 @@
+[Unit]
+Description=On-demand browser desktop agent
+After=network-online.target display-manager.service
+Wants=network-online.target
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/lab-desktop/agent.py
+Restart=always
+RestartSec=5
+User=root
+AmbientCapabilities=CAP_SETUID CAP_SETGID
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+MemoryMax=384M
+CPUQuota=150%
+TasksMax=48
+LimitCORE=0
+[Install]
+WantedBy=multi-user.target

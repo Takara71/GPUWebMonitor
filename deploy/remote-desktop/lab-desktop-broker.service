@@ -1,0 +1,26 @@
+[Unit]
+Description=Authenticated exclusive browser desktop gateway
+After=network-online.target lab-session-auth.service
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/lab-desktop/broker.py
+Restart=always
+RestartSec=5
+User=lab-desktop
+Group=lab-desktop
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+MemoryMax=192M
+CPUQuota=100%
+TasksMax=32
+LimitCORE=0
+[Install]
+WantedBy=multi-user.target

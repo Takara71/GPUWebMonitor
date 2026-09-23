@@ -15,3 +15,16 @@ node_modules/
 
 # 本机私密运维清单（禁止提交账号、密码与真实网络配置）
 .private/
+
+# Runtime credentials, mail/session state and raw machine diagnostics
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+deploy/remote-desktop/validation/*.json
+deploy/remote-desktop/validation/*.jsonl
+deploy/remote-desktop/validation/RESULTS.md

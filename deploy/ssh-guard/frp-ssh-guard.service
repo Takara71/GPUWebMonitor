@@ -1,0 +1,21 @@
+[Unit]
+Description=FRP SSH ingress rate limiting and escalating bans
+After=network-pre.target
+Before=frps.service
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/python3 /opt/frp-ssh-guard/guard.py apply
+ExecStart=/usr/bin/python3 /opt/frp-ssh-guard/guard.py run
+Restart=on-failure
+RestartSec=3
+User=root
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/frp-ssh-guard
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_DAC_READ_SEARCH CAP_SYSLOG
+MemoryMax=192M
+[Install]
+WantedBy=multi-user.target

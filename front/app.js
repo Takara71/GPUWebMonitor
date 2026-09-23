@@ -50,7 +50,7 @@ const app = createApp({
         process: { title: '计算进程', count: (n) => `${n} 个进程`, pid: 'PID', user: '用户', name: '进程名', memory: '显存占用', command: '命令', empty: '该 GPU 暂无活跃计算进程' },
         units: { cards: (n) => `${n} 张`, unavailable: '不可用' },
         errors: { noConfigTitle: '未配置计算节点', noConfigDesc: '未找到服务器配置，请检查 front/config.json。', configFailedTitle: '无法加载节点配置', loadServerList: '无法加载服务器列表，请确认 Dashboard 服务正在运行。', nodeFailedTitle: '无法获取当前节点数据', nodeFailedDesc: '已保留最近一次有效数据。请检查节点网络或 Agent 服务后重试。', fetchFailed: (m) => `获取数据失败：${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor', icpPlaceholder: 'ICP备案信息（待补充）' },
+        footer: { line1: '© 2026 GPUWebMonitor', icpRecord: 'ICP备案号（部署时填写）', policeRecord: '公安备案号（部署时填写）' },
       },
       en: {
         appTitle: 'GPU Cluster Monitor', appSubtitle: 'Live node resources, GPU workloads, and compute processes',
@@ -68,7 +68,7 @@ const app = createApp({
         process: { title: 'Compute processes', count: (n) => `${n} processes`, pid: 'PID', user: 'User', name: 'Process', memory: 'GPU memory', command: 'Command', empty: 'No active compute process on this GPU' },
         units: { cards: (n) => `${n} cards`, unavailable: 'Unavailable' },
         errors: { noConfigTitle: 'No compute nodes configured', noConfigDesc: 'No server configuration was found. Check front/config.json.', configFailedTitle: 'Unable to load node configuration', loadServerList: 'Unable to load the server list. Make sure Dashboard is running.', nodeFailedTitle: 'Unable to retrieve node data', nodeFailedDesc: 'The latest valid data is preserved. Check the node network or Agent service and retry.', fetchFailed: (m) => `Failed to fetch data: ${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor', icpPlaceholder: 'ICP filing information (pending)' },
+        footer: { line1: '© 2026 GPUWebMonitor', icpRecord: 'ICP备案号（部署时填写）', policeRecord: '公安备案号（部署时填写）' },
       },
       ja: {
         appTitle: 'GPU クラスターモニター', appSubtitle: 'ノード資源、GPU 負荷、計算プロセスをリアルタイム監視',
@@ -86,7 +86,7 @@ const app = createApp({
         process: { title: '計算プロセス', count: (n) => `${n} プロセス`, pid: 'PID', user: 'ユーザー', name: 'プロセス', memory: 'GPU メモリ', command: 'コマンド', empty: 'この GPU にアクティブな計算プロセスはありません' },
         units: { cards: (n) => `${n} 枚`, unavailable: '利用不可' },
         errors: { noConfigTitle: '計算ノードが未設定です', noConfigDesc: 'サーバー設定がありません。front/config.json を確認してください。', configFailedTitle: 'ノード設定を読み込めません', loadServerList: 'サーバー一覧を読み込めません。Dashboard の起動状態を確認してください。', nodeFailedTitle: 'ノードデータを取得できません', nodeFailedDesc: '直近の有効データを保持しています。ネットワークまたは Agent を確認して再試行してください。', fetchFailed: (m) => `データ取得失敗：${m}` },
-        footer: { line1: '© 2026 GPUWebMonitor', icpPlaceholder: 'ICP 届出情報（準備中）' },
+        footer: { line1: '© 2026 GPUWebMonitor', icpRecord: 'ICP备案号（部署时填写）', policeRecord: '公安备案号（部署时填写）' },
       },
     };
 

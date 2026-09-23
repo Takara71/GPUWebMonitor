@@ -1,0 +1,16 @@
+[Unit]
+Description=Private browser desktop for Linux UID %i
+After=network.target
+[Service]
+Type=simple
+User=%i
+PAMName=lab-web-desktop-session
+ExecStart=/usr/bin/python3 /opt/lab-desktop/session.py
+RuntimeDirectory=lab-desktop-%i
+RuntimeDirectoryMode=0700
+UMask=0077
+KillMode=control-group
+TimeoutStopSec=15
+Restart=no
+LimitCORE=0
+TasksMax=2048
